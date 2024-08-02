@@ -59,14 +59,24 @@ A decentralized poker game is a technically challenging project due to the compu
 
 ### Testnet
 
-Deployed to Ethereum Sepolia testnet. Contracts here:
-MockUSDC deployed to: 0x180E80d218878Ba569Ca3463661E157Dc47d016F
-PokerChips deployed to: 0x14bb1E229725be421e397443dF7b74ffc433C52c
-PokerHandEvaluator deployed to: 0x1D1ed5505c2b401edC44F436712577489D1B670D
-PokerDealer deployed to: 0xF20EFa959474eAcDA038a735b5b2bF052E0d0979
-PokerGame deployed to: 0xbeCbC2bA2afB8c69D00DaA9d860366bb539F0919
+Deployed to Ethereum Sepolia testnet
 
-You'll need to:
+MockUSDC deployed to:
+0x180E80d218878Ba569Ca3463661E157Dc47d016F
+
+PokerChips deployed to:
+0x14bb1E229725be421e397443dF7b74ffc433C52c
+
+PokerHandEvaluator deployed to:
+0x1D1ed5505c2b401edC44F436712577489D1B670D
+
+PokerDealer deployed to:
+0xF20EFa959474eAcDA038a735b5b2bF052E0d0979
+
+PokerGame deployed to:
+0xbeCbC2bA2afB8c69D00DaA9d860366bb539F0919
+
+Before playing the game on testnet you'll need to mint and approve some tokens.
    await usdc.mint(deployer.address, 1000e6);
    await usdc.approve(await pokerChips.getAddress(), 1000e6);
    await pokerChips.depositUSDC(1000e6);
