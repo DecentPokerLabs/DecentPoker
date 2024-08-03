@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DECENTRALIZED POKER</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+        }
+        .section {
+            margin-bottom: 20px;
+        }
+        input, button {
+            margin: 5px 0;
+            padding: 5px;
+        }
+        #communityCards {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+        }
+        .card {
+            width: 50px;
+            height: 75px;
+            border: 1px solid #000;
+            border-radius: 5px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+        }
+        #gameLog {
+            height: 150px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>DECENTRALIZED POKER</h1>
+    
+    <div id="connectWallet" class="section">
+        <button onclick="connectWallet()">Connect Wallet</button>
+    </div>
+
+    <div id="createGame" class="section">
+        <h2>Create Game</h2>
+        <input type="number" id="maxPlayers" placeholder="Max Players (2-9)" min="2" max="9" value="6">
+        <input type="number" id="bigBlind" placeholder="Big Blind" value="2">
+        <input type="text" id="invitePublicKey" placeholder="Invite Public Key" disabled>
+        <button onclick="createGame()">Create Game</button>
+    </div>
+
+    <div id="mintChips" class="section">
+        <button onclick="mint()">Mint PokerChips & Approve Spend</button>
+    </div>
+
+    <div id="joinGame" class="section">
+        <h2>Join Game</h2>
+        <input type="number" id="gameId" placeholder="Game ID">
+        <input type="number" id="seatIndex" placeholder="Seat Index">
+        <input type="text" id="invitePrivateKey" placeholder="Invite Private Key" disabled>
+        <button onclick="joinGame()">Join Game</button> <button onclick="restoreGame()">Restore Game</button>
+    </div>
+
+    <div id="gameInfo" class="section">
+        <h2>Game Information</h2>
+        <p>Game ID: <span id="currentGameId"></span></p>
+        <p>Your Address: <span id="playerAddress"></span></p>
+        <p>Poker Chips Balance: <span id="pokerChipsBalance"></span></p>
+        <p>In Game Chips: <span id="playerChips"></span></p>
+        <p>Current Bet: <span id="currentBet"></span></p>
+        <p>Pot Size: <span id="potSize"></span></p>
+        <p>Game State: <span id="gameState"></span></p>
+        <p>Action On: <span id="actionOn"></span></p>
+        <div id="communityCards">
+            <div class="card" id="card1"></div>
+            <div class="card" id="card2"></div>
+            <div class="card" id="card3"></div>
+            <div class="card" id="card4"></div>
+            <div class="card" id="card5"></div>
+        </div>
+    </div>
+
+    <div id="playerActions" class="section">
+        <h2>Player Actions</h2>
+        <button onclick="deal()">Deal</button>
+        <br />
+        <button onclick="playerAction('Fold')">Fold</button>
+        <button onclick="playerAction('Check')">Check</button>
+        <button onclick="playerAction('Call')">Call</button>
+        <input type="number" id="raiseAmount" placeholder="Raise Amount">
+        <button onclick="playerAction('Raise')">Raise</button>
+    </div>
+
+    <div id="gameLog" class="section">
+        <h2>Game Log</h2>
+        <div id="logEntries"></div>
+    </div>
+
+    <script type="module">
+        import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@6.7.0/dist/ethers.min.js";
+    
+        let provider, signer, pokerGame, pokerChips, usdc, keys, gameId;
+
+        const pokerGameAddress = "0xbeCbC2bA2afB8c69D00DaA9d860366bb539F0919";
+        const pokerGameABI = [{"inputs": [{"internalType": "address","name": "_handEvaluator","type": "address"},{"internalType": "address","name": "_pokerChips","type": "address"},{"internalType": "address","name": "_pokerDealer","type": "address"}],"stateMutability": "nonpayable","type": "constructor"},{"anonymous": false,"inputs": [{"indexed": true,"internalType": "uint256","name": "gid","type": "uint256"},{"indexed": false,"internalType": "address","name": "player","type": "address"},{"indexed": false,"internalType": "enum PokerGame.PlayerAction","name": "action","type": "uint8"},{"indexed": false,"internalType": "uint256","name": "amount","type": "uint256"}],"name": "Action","type": "event"},{"anonymous": false,"inputs": [{"indexed": true,"internalType": "uint256","name": "gid","type": "uint256"},{"indexed": false,"internalType": "uint8","name": "maxPlayers","type": "uint8"},{"indexed": false,"internalType": "uint256","name": "bigBlind","type": "uint256"}],"name": "GameCreated","type": "event"},{"anonymous": false,"inputs": [{"indexed": true,"internalType": "uint256","name": "gid","type": "uint256"},{"indexed": false,"internalType": "uint256","name": "hid","type": "uint256"},{"indexed": false,"internalType": "address[]","name": "players","type": "address[]"},{"indexed": false,"internalType": "bytes32[]","name": "handPublicKeys","type": "bytes32[]"}],"name": "NewHand","type": "event"},{"anonymous": false,"inputs": [{"indexed": true,"internalType": "uint256","name": "gid","type": "uint256"},{"indexed": false,"internalType": "enum PokerGame.GameState","name": "state","type": "uint8"}],"name": "NewRound","type": "event"},{"anonymous": false,"inputs": [{"indexed": true,"internalType": "uint256","name": "gid","type": "uint256"},{"indexed": false,"internalType": "address","name": "player","type": "address"},{"indexed": false,"internalType": "uint8","name": "seatIndex","type": "uint8"}],"name": "PlayerJoined","type": "event"},{"anonymous": false,"inputs": [{"indexed": true,"internalType": "uint256","name": "gid","type": "uint256"},{"indexed": false,"internalType": "uint256","name": "hid","type": "uint256"},{"indexed": false,"internalType": "address","name": "winner","type": "address"},{"indexed": false,"internalType": "uint256","name": "amount","type": "uint256"}],"name": "Winner","type": "event"},{"inputs": [{"internalType": "uint256","name": "_gid","type": "uint256"}],"name": "autoFold","outputs": [],"stateMutability": "nonpayable","type": "function"},{"inputs": [{"internalType": "uint256","name": "_gid","type": "uint256"}],"name": "closeHand","outputs": [],"stateMutability": "nonpayable","type": "function"},{"inputs": [{"internalType": "uint8","name": "_maxPlayers","type": "uint8"},{"internalType": "uint256","name": "_bigBlind","type": "uint256"},{"internalType": "bytes32","name": "_invitePublicKey","type": "bytes32"}],"name": "createGame","outputs": [{"internalType": "uint256","name": "","type": "uint256"}],"stateMutability": "nonpayable","type": "function"},{"inputs": [{"internalType": "uint256","name": "_gid","type": "uint256"}],"name": "dealHand","outputs": [],"stateMutability": "nonpayable","type": "function"},{"inputs": [{"internalType": "uint256","name": "","type": "uint256"}],"name": "games","outputs": [{"internalType": "enum PokerGame.GameState","name": "state","type": "uint8"},{"internalType": "uint256","name": "hid","type": "uint256"},{"internalType": "uint256","name": "currentBet","type": "uint256"},{"internalType": "uint256","name": "lastActionBlock","type": "uint256"},{"internalType": "uint256","name": "lastActionTimestamp","type": "uint256"},{"internalType": "uint256","name": "bigBlind","type": "uint256"},{"internalType": "bytes32","name": "invitePublicKey","type": "bytes32"},{"internalType": "uint8","name": "maxPlayers","type": "uint8"},{"internalType": "uint8","name": "dealerSeat","type": "uint8"},{"internalType": "uint8","name": "actionOnSeat","type": "uint8"},{"internalType": "bool","name": "headsUp","type": "bool"}],"stateMutability": "view","type": "function"},{"inputs": [{"internalType": "uint256","name": "_gid","type": "uint256"}],"name": "getAction","outputs": [{"internalType": "address","name": "","type": "address"}],"stateMutability": "view","type": "function"},{"inputs": [{"internalType": "uint256","name": "_gid","type": "uint256"},{"internalType": "address","name": "_player","type": "address"}],"name": "getChips","outputs": [{"internalType": "uint256","name": "","type": "uint256"}],"stateMutability": "view","type": "function"},{"inputs": [{"internalType": "uint256","name": "_gid","type": "uint256"}],"name": "getDealer","outputs": [{"internalType": "address","name": "","type": "address"}],"stateMutability": "view","type": "function"},{"inputs": [{"internalType": "uint256","name": "_gid","type": "uint256"}],"name": "getHandId","outputs": [{"internalType": "uint256","name": "","type": "uint256"}],"stateMutability": "view","type": "function"},{"inputs": [{"internalType": "uint256","name": "_gid","type": "uint256"},{"internalType": "address","name": "_player","type": "address"}],"name": "getSeat","outputs": [{"internalType": "uint8","name": "","type": "uint8"}],"stateMutability": "view","type": "function"},{"inputs": [],"name": "handEvaluator","outputs": [{"internalType": "contract IPokerHandEvaluator","name": "","type": "address"}],"stateMutability": "view","type": "function"},{"inputs": [{"internalType": "uint256","name": "_gid","type": "uint256"},{"internalType": "uint8","name": "_seatIndex","type": "uint8"},{"internalType": "bytes32","name": "_handPublicKey","type": "bytes32"},{"internalType": "bytes32","name": "_invitePrivateKey","type": "bytes32"}],"name": "joinGame","outputs": [],"stateMutability": "nonpayable","type": "function"},{"inputs": [{"internalType": "uint256","name": "_gid","type": "uint256"}],"name": "leaveGame","outputs": [],"stateMutability": "nonpayable","type": "function"},{"inputs": [{"internalType": "uint256","name": "_gid","type": "uint256"},{"internalType": "enum PokerGame.PlayerAction","name": "_action","type": "uint8"},{"internalType": "uint256","name": "_amount","type": "uint256"}],"name": "playerAction","outputs": [],"stateMutability": "nonpayable","type": "function"},{"inputs": [],"name": "pokerChips","outputs": [{"internalType": "contract IPokerChips","name": "","type": "address"}],"stateMutability": "view","type": "function"},{"inputs": [],"name": "pokerDealer","outputs": [{"internalType": "contract IPokerDealer","name": "","type": "address"}],"stateMutability": "view","type": "function"},{"inputs": [{"internalType": "uint256","name": "_gid","type": "uint256"},{"internalType": "bytes32","name": "_privateKey","type": "bytes32"},{"internalType": "bytes32","name": "_nextPublicKey","type": "bytes32"}],"name": "revealHand","outputs": [],"stateMutability": "nonpayable","type": "function"}];
+        
+        const usdcAddress = "0x180E80d218878Ba569Ca3463661E157Dc47d016F";
+        const usdcABI = [{"inputs": [{"internalType": "string","name": "name","type": "string"},{"internalType": "string","name": "symbol","type": "string"}],"stateMutability": "nonpayable","type": "constructor"},{"inputs": [{"internalType": "address","name": "spender","type": "address"},{"internalType": "uint256","name": "allowance","type": "uint256"},{"internalType": "uint256","name": "needed","type": "uint256"}],"name": "ERC20InsufficientAllowance","type": "error"},{"inputs": [{"internalType": "address","name": "sender","type": "address"},{"internalType": "uint256","name": "balance","type": "uint256"},{"internalType": "uint256","name": "needed","type": "uint256"}],"name": "ERC20InsufficientBalance","type": "error"},{"inputs": [{"internalType": "address","name": "approver","type": "address"}],"name": "ERC20InvalidApprover","type": "error"},{"inputs": [{"internalType": "address","name": "receiver","type": "address"}],"name": "ERC20InvalidReceiver","type": "error"},{"inputs": [{"internalType": "address","name": "sender","type": "address"}],"name": "ERC20InvalidSender","type": "error"},{"inputs": [{"internalType": "address","name": "spender","type": "address"}],"name": "ERC20InvalidSpender","type": "error"},{"anonymous": false,"inputs": [{"indexed": true,"internalType": "address","name": "owner","type": "address"},{"indexed": true,"internalType": "address","name": "spender","type": "address"},{"indexed": false,"internalType": "uint256","name": "value","type": "uint256"}],"name": "Approval","type": "event"},{"anonymous": false,"inputs": [{"indexed": true,"internalType": "address","name": "from","type": "address"},{"indexed": true,"internalType": "address","name": "to","type": "address"},{"indexed": false,"internalType": "uint256","name": "value","type": "uint256"}],"name": "Transfer","type": "event"},{"inputs": [{"internalType": "address","name": "owner","type": "address"},{"internalType": "address","name": "spender","type": "address"}],"name": "allowance","outputs": [{"internalType": "uint256","name": "","type": "uint256"}],"stateMutability": "view","type": "function"},{"inputs": [{"internalType": "address","name": "spender","type": "address"},{"internalType": "uint256","name": "value","type": "uint256"}],"name": "approve","outputs": [{"internalType": "bool","name": "","type": "bool"}],"stateMutability": "nonpayable","type": "function"},{"inputs": [{"internalType": "address","name": "account","type": "address"}],"name": "balanceOf","outputs": [{"internalType": "uint256","name": "","type": "uint256"}],"stateMutability": "view","type": "function"},{"inputs": [],"name": "decimals","outputs": [{"internalType": "uint8","name": "","type": "uint8"}],"stateMutability": "view","type": "function"},{"inputs": [{"internalType": "address","name": "to","type": "address"},{"internalType": "uint256","name": "amount","type": "uint256"}],"name": "mint","outputs": [],"stateMutability": "nonpayable","type": "function"},{"inputs": [],"name": "name","outputs": [{"internalType": "string","name": "","type": "string"}],"stateMutability": "view","type": "function"},{"inputs": [],"name": "symbol","outputs": [{"internalType": "string","name": "","type": "string"}],"stateMutability": "view","type": "function"},{"inputs": [],"name": "totalSupply","outputs": [{"internalType": "uint256","name": "","type": "uint256"}],"stateMutability": "view","type": "function"},{"inputs": [{"internalType": "address","name": "to","type": "address"},{"internalType": "uint256","name": "value","type": "uint256"}],"name": "transfer","outputs": [{"internalType": "bool","name": "","type": "bool"}],"stateMutability": "nonpayable","type": "function"},{"inputs": [{"internalType": "address","name": "from","type": "address"},{"internalType": "address","name": "to","type": "address"},{"internalType": "uint256","name": "value","type": "uint256"}],"name": "transferFrom","outputs": [{"internalType": "bool","name": "","type": "bool"}],"stateMutability": "nonpayable","type": "function"}];
+
+        const pokerChipsAddress = "0x14bb1E229725be421e397443dF7b74ffc433C52c";
+        const pokerChipsABI = [{"inputs": [{"internalType": "address","name": "_usdcToken","type": "address"}],"stateMutability": "nonpayable","type": "constructor"},{"inputs": [{"internalType": "address","name": "spender","type": "address"},{"internalType": "uint256","name": "allowance","type": "uint256"},{"internalType": "uint256","name": "needed","type": "uint256"}],"name": "ERC20InsufficientAllowance","type": "error"},{"inputs": [{"internalType": "address","name": "sender","type": "address"},{"internalType": "uint256","name": "balance","type": "uint256"},{"internalType": "uint256","name": "needed","type": "uint256"}],"name": "ERC20InsufficientBalance","type": "error"},{"inputs": [{"internalType": "address","name": "approver","type": "address"}],"name": "ERC20InvalidApprover","type": "error"},{"inputs": [{"internalType": "address","name": "receiver","type": "address"}],"name": "ERC20InvalidReceiver","type": "error"},{"inputs": [{"internalType": "address","name": "sender","type": "address"}],"name": "ERC20InvalidSender","type": "error"},{"inputs": [{"internalType": "address","name": "spender","type": "address"}],"name": "ERC20InvalidSpender","type": "error"},{"anonymous": false,"inputs": [{"indexed": true,"internalType": "address","name": "owner","type": "address"},{"indexed": true,"internalType": "address","name": "spender","type": "address"},{"indexed": false,"internalType": "uint256","name": "value","type": "uint256"}],"name": "Approval","type": "event"},{"anonymous": false,"inputs": [{"indexed": true,"internalType": "address","name": "from","type": "address"},{"indexed": true,"internalType": "address","name": "to","type": "address"},{"indexed": false,"internalType": "uint256","name": "value","type": "uint256"}],"name": "Transfer","type": "event"},{"inputs": [{"internalType": "address","name": "owner","type": "address"},{"internalType": "address","name": "spender","type": "address"}],"name": "allowance","outputs": [{"internalType": "uint256","name": "","type": "uint256"}],"stateMutability": "view","type": "function"},{"inputs": [{"internalType": "address","name": "spender","type": "address"},{"internalType": "uint256","name": "value","type": "uint256"}],"name": "approve","outputs": [{"internalType": "bool","name": "","type": "bool"}],"stateMutability": "nonpayable","type": "function"},{"inputs": [{"internalType": "address","name": "account","type": "address"}],"name": "balanceOf","outputs": [{"internalType": "uint256","name": "","type": "uint256"}],"stateMutability": "view","type": "function"},{"inputs": [],"name": "decimals","outputs": [{"internalType": "uint8","name": "","type": "uint8"}],"stateMutability": "view","type": "function"},{"inputs": [{"internalType": "uint256","name": "amount","type": "uint256"}],"name": "depositUSDC","outputs": [],"stateMutability": "nonpayable","type": "function"},{"inputs": [],"name": "name","outputs": [{"internalType": "string","name": "","type": "string"}],"stateMutability": "view","type": "function"},{"inputs": [],"name": "symbol","outputs": [{"internalType": "string","name": "","type": "string"}],"stateMutability": "view","type": "function"},{"inputs": [],"name": "totalSupply","outputs": [{"internalType": "uint256","name": "","type": "uint256"}],"stateMutability": "view","type": "function"},{"inputs": [{"internalType": "address","name": "to","type": "address"},{"internalType": "uint256","name": "value","type": "uint256"}],"name": "transfer","outputs": [{"internalType": "bool","name": "","type": "bool"}],"stateMutability": "nonpayable","type": "function"},{"inputs": [{"internalType": "address","name": "from","type": "address"},{"internalType": "address","name": "to","type": "address"},{"internalType": "uint256","name": "value","type": "uint256"}],"name": "transferFrom","outputs": [{"internalType": "bool","name": "","type": "bool"}],"stateMutability": "nonpayable","type": "function"},{"inputs": [],"name": "usdcToken","outputs": [{"internalType": "contract IERC20","name": "","type": "address"}],"stateMutability": "view","type": "function"},{"inputs": [{"internalType": "uint256","name": "amount","type": "uint256"}],"name": "withdraw","outputs": [],"stateMutability": "nonpayable","type": "function"}];
+
+        const nullHash = '0x' + '0'.repeat(64);
+        const shuffleDeck = (hash) => {
+            let deck = [...Array(52).keys()].map(i => i + 1); // [1 to 52]
+            let shuffledDeck = [...deck];
+            for (let i = 0; i < shuffledDeck.length; i++) {
+                let combined = ethers.solidityPacked(["bytes32", "uint256"], [hash, i]);
+                let randomIndex = BigInt(ethers.keccak256(combined), 16) % BigInt(shuffledDeck.length);
+                let temp = shuffledDeck[i];
+                shuffledDeck[i] = shuffledDeck[randomIndex];
+                shuffledDeck[randomIndex] = temp;
+            }
+            return shuffledDeck;
+        }
+
+        const shuffleAndDeal = (blockHash, privateKey) => {
+            let combinedHash = ethers.keccak256(ethers.concat([
+                ethers.getBytes(blockHash), 
+                ethers.getBytes(privateKey)
+            ]));
+            let shuffledDeck = shuffleDeck(combinedHash);
+            return shuffledDeck.slice(0, 7);
+        }
+
+        const createKeyPair = () => {
+            const handPrivateKey = ethers.encodeBytes32String("secret");
+            const handPublicKey = ethers.keccak256(handPrivateKey);
+            return { handPrivateKey, handPublicKey }
+        }
+
+        const connectWallet = async () => {
+            if (typeof window.ethereum !== 'undefined') {
+                try {
+                    await window.ethereum.request({ method: 'eth_requestAccounts' });
+                    provider = new ethers.BrowserProvider(window.ethereum);
+                    signer = await provider.getSigner();
+                    pokerGame = new ethers.Contract(pokerGameAddress, pokerGameABI, signer);
+                    usdc = new ethers.Contract(usdcAddress, usdcABI, signer);
+                    pokerChips = new ethers.Contract(pokerChipsAddress, pokerChipsABI, signer);
+                    document.getElementById('playerAddress').textContent = await signer.getAddress();
+                    document.getElementById('connectWallet').innerHTML = 'CONNECTED';
+                    setupEventListeners();
+                } catch (error) {
+                    console.error("Failed to connect wallet:", error);
+                }
+            } else {
+                console.log('Please install MetaMask!');
+            }
+        }
+    
+        function setupEventListeners() {
+            pokerGame.on("GameCreated", (gid, maxPlayers, bigBlind, event) => {
+                logEvent(`New game created: Game ID ${gid}, Max Players: ${maxPlayers}, Big Blind: ${bigBlind}`);
+            });
+
+            pokerGame.on("PlayerJoined", (gid, player, seatIndex, event) => {
+                logEvent(`Player ${player} joined game ${gid} at seat ${seatIndex}`);
+                if (gid.toString() === document.getElementById('currentGameId').textContent) {
+                    updateGameInfo();
+                }
+            });
+    
+            pokerGame.on("NewHand", (gid, hid, players, handPublicKeys, event) => {
+                logEvent(`New hand started in game ${gid}: Hand ID ${hid}`);
+                if (gid.toString() === document.getElementById('currentGameId').textContent) {
+                    updateGameInfo();
+                }
+            });
+    
+            pokerGame.on("NewRound", (gid, state, event) => {
+                const states = ["PreFlop", "Flop", "Turn", "River", "Showdown"];
+                logEvent(`New round in game ${gid}: ${states[state]}`);
+                if (gid.toString() === document.getElementById('currentGameId').textContent) {
+                    updateGameInfo();
+                }
+            });
+    
+            pokerGame.on("Action", (gid, player, action, amount, event) => {
+                const actions = ["Fold", "Check", "Call", "Raise"];
+                logEvent(`Player ${player} ${actions[action]} ${amount > 0 ? amount : ''} in game ${gid}`);
+                if (gid.toString() === document.getElementById('currentGameId').textContent) {
+                    updateGameInfo();
+                }
+            });
+    
+            pokerGame.on("Winner", (gid, hid, winner, amount, event) => {
+                logEvent(`Player ${winner} won ${amount} in game ${gid}, hand ${hid}`);
+                if (gid.toString() === document.getElementById('currentGameId').textContent) {
+                    updateGameInfo();
+                }
+            });
+        }
+    
+        function logEvent(message) {
+            const logEntry = document.createElement('p');
+            logEntry.textContent = message;
+            document.getElementById('logEntries').appendChild(logEntry);
+            document.getElementById('gameLog').scrollTop = document.getElementById('gameLog').scrollHeight;
+        }
+    
+        const createGame = async () => {
+            const maxPlayers = document.getElementById('maxPlayers').value;
+            const bigBlind = document.getElementById('bigBlind').value;
+            const invitePublicKey = nullHash; //document.getElementById('invitePublicKey').value;
+    
+            try {
+                const tx = await pokerGame.createGame(maxPlayers, bigBlind, invitePublicKey);
+                await tx.wait();
+                console.log("Game created successfully");
+            } catch (error) {
+                console.error("Failed to create game:", error);
+            }
+        }
+
+        const mint = async () => {
+            try {
+                const playerAddress = await signer.getAddress();
+                let tx;
+                tx = await usdc.mint(playerAddress, 100000e6);
+                await tx.wait();
+                tx = await usdc.approve(await pokerChips.getAddress(), 100000e6);
+                await tx.wait();
+                tx = await pokerChips.depositUSDC(100000e6);
+                await tx.wait();
+                tx = await pokerChips.approve(await pokerGame.getAddress(), 100000e6);
+                await tx.wait();
+                console.log("100,000 Poker Chips Minted");
+            } catch (error) {
+                console.error("Failed to mint poker chips:", error);
+            }
+        }
+    
+        const joinGame = async () => {
+            const gameId = document.getElementById('gameId').value;
+            const seatIndex = document.getElementById('seatIndex').value;
+            keys = createKeyPair();
+            const invitePrivateKey = nullHash; // document.getElementById('invitePrivateKey').value;
+            try {
+                const tx = await pokerGame.joinGame(gameId, seatIndex, keys.handPublicKey, invitePrivateKey);
+                await tx.wait();
+                console.log("Joined game successfully");
+                localStorage.setItem('gameId', gameId);
+                document.getElementById('currentGameId').textContent = gameId;
+                document.getElementById('gameInfo').style.display = 'block';
+                document.getElementById('playerActions').style.display = 'block';
+                updateGameInfo();
+            } catch (error) {
+                console.error("Failed to join game:", error);
+            }
+        }
+
+        const restoreGame = async () => {
+            const gameId = prompt('Enter your previous gameId');
+            document.getElementById('currentGameId').textContent = gameId;
+            localStorage.setItem('gameId', gameId);
+        }
+    
+
+        const deal = async () => {
+            const gameId = localStorage.getItem('gameId');
+            try {
+                const tx = await pokerGame.dealHand(gameId);
+                await tx.wait();
+                console.log(`dealHand successfull`);
+                updateGameInfo();
+            } catch (error) {
+                console.error(`Failed to perform ${action} action:`, error);
+            }
+        }
+
+        const playerAction = async (action) => {
+            const gameId = document.getElementById('currentGameId').textContent;
+            let amount = 0;
+    
+            if (action === 'Raise') {
+                amount = document.getElementById('raiseAmount').value;
+            }
+    
+            try {
+                const tx = await pokerGame.playerAction(gameId, getActionEnum(action), amount);
+                await tx.wait();
+                console.log(`${action} action performed successfully`);
+                updateGameInfo();
+            } catch (error) {
+                console.error(`Failed to perform ${action} action:`, error);
+            }
+        }
+    
+        const getActionEnum = (action) => {
+            switch (action) {
+                case 'Fold': return 0;
+                case 'Check': return 1;
+                case 'Call': return 2;
+                case 'Raise': return 3;
+                default: throw new Error('Invalid action');
+            }
+        }
+    
+        const updateGameInfo = async () => {
+            const playerAddress = await signer.getAddress();
+            const gameId = localStorage.getItem('gameId');
+
+            const pokerChipsBalance = await pokerChips.balanceOf(playerAddress);
+            document.getElementById('pokerChipsBalance').textContent = pokerChipsBalance.toString();
+
+            if (gameId === null) return;
+    
+            const chips = await pokerGame.getChips(gameId, playerAddress);
+            document.getElementById('playerChips').textContent = chips.toString();
+
+            // Get current bet and pot size
+            const game = await pokerGame.games(gameId);
+            document.getElementById('currentBet').textContent = game.currentBet.toString();
+    
+            // Get pot size (sum of all pots)
+            let potSize = ethers.toBigInt(0);
+            for (let i = 0; i < 8; i++) {
+                const pot = await pokerGame.games(gameId, "pots", i);
+                potSize += pot.amount;
+            }
+            document.getElementById('potSize').textContent = potSize.toString();
+    
+            // Get game state
+            const states = ["Waiting", "PreFlop", "Flop", "Turn", "River", "Showdown"];
+            document.getElementById('gameState').textContent = states[game.state];
+    
+            // Get action on player
+            const actionOnAddress = await pokerGame.getAction(gameId);
+            document.getElementById('actionOn').textContent = actionOnAddress;
+    
+            // Update community cards
+            const handId = await pokerGame.getHandId(gameId);
+            if (handId > 0) {
+                const communityCards = await pokerGame.getCommunityCards(handId);
+                for (let i = 0; i < 5; i++) {
+                    const card = document.getElementById(`card${i+1}`);
+                    if (communityCards[i] > 0) {
+                        card.textContent = getCardString(communityCards[i]);
+                    } else {
+                        card.textContent = '';
+                    }
+                }
+            }
+        }
+    
+        const getCardString = (cardValue) => {
+            const suits = ['♠', '♥', '♦', '♣'];
+            const ranks = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+            const suit = suits[Math.floor((cardValue - 1) / 13)];
+            const rank = ranks[(cardValue - 1) % 13];
+            return rank + suit;
+        }
+    
+        // Expose functions to the global scope
+        window.connectWallet = connectWallet;
+        window.createGame = createGame;
+        window.mint = mint;
+        window.joinGame = joinGame;
+        window.restoreGame = restoreGame;
+        window.deal = deal;
+        window.playerAction = playerAction;
+    </script>
+    
+    
+</body>
+</html>
