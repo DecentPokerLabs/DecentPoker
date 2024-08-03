@@ -40,8 +40,35 @@
             background: linear-gradient(90deg, #262626, #060606) padding-box, linear-gradient(48.23deg, #22B879 40%, #7441D5 60%) border-box;
             
         }
+        a {
+            color: #EEE;
+        }
+        a:hover {
+            color: #FFF;
+        }
         .grey {
             color: #888;
+        }
+        .menu {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            background: linear-gradient(rgba(0, 0, 0, 1), rgba(0, 0, 0, 0.4));
+            padding: 10px 0;
+            text-align: center;
+            z-index: 1000;
+        }
+
+        .menu a {
+            color: #EEE;
+            text-decoration: none;
+            margin: 0 10px;
+            font-size: 14px;
+            font-family: "Playfair Display", 'Times New Roman', Times, serif;
+        }
+
+        .menu a:hover {
+            text-decoration: underline;
         }
         .hero {
             position: relative;
@@ -103,6 +130,10 @@
             margin-left: auto;
             margin-right: auto;
         }
+        #how-it-works {
+            background: linear-gradient(rgba(0, 0, 0, 1), rgba(0, 0, 0, 0.8)), url('img/table.webp') no-repeat center center/cover;
+            background-blend-mode: darken;
+        }
         #how-it-works .svg-icon {
             max-width: 100px;
             opacity: 0.3;
@@ -152,22 +183,41 @@
             font-size: 24px;
             margin-bottom: 10px;
         }
-
+        #testimonials {
+            background: linear-gradient(rgba(0, 0, 0, 1), rgba(0, 0, 0, 0.8),  rgba(0, 0, 0, 1)), url('img/girls.webp') no-repeat center center/cover;
+            background-blend-mode: darken;
+        }
         .testimonials .testimonial {
-            width: 45%;
+            width: 70%;
             margin: 10px 0;
             position: relative;
-            background: #111;
+            background: #060606CC;
             border-radius: 25px;
             padding: 20px;
+            text-align: left;
         }
 
         .testimonial img {
             width: 180px;
         }
 
+        .security-item {
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px 60px;
+            border: 1px solid #22B879;
+            background: linear-gradient(rgba(0, 0, 0, 1), rgba(0, 0, 0, 0.8)), url('img/dots.webp') no-repeat center center/cover;
+            background-blend-mode: darken;
+            border-radius: 25px;
+        }
+
+        .security-item p {
+            text-align: left;
+            font-size: 14px; 
+        }
+
         footer a {
-            color: #ff9800;
+            color: #6C63FF;
             text-decoration: none;
             margin: 0 10px;
         }
@@ -211,6 +261,16 @@
     </div>
       
     <div class="content">
+        <div class="menu">
+            <a href="javscript:void(0)" class="play-now">PLAY</a> <span class="grey">|</span>
+            <a href="https://decentpoker.substack.com">NEWS</a> <span class="grey">|</span>
+            <a href="https://decentpoker.org/DecentPoker-Whitepaper.pdf">WHITEPAPER</a> <span class="grey">|</span>
+            <a href="https://github.com/DecentPokerLabs/DecentPoker">GITHUB</a> <span class="grey">|</span>
+            <a href="https://x.com/DecentPokerLabs">@DECENTPOKERLABS</a> <span class="grey">|</span>
+            <a href="mailto:decentpokerlabs@proton.me">CONTACT</a>
+            
+        </div>
+
         <header class="hero">
             <div class="logo">Decent<span class="grey">Poker</span></div>
             <h1>The Open Decentralized Poker Project</h1>
@@ -219,7 +279,6 @@
         </header>
     
         <section id="how-it-works" class="container">
-            <img src="img/table.webp" class="table-image" alt="Poker Table" />
             <h2>How It Works</h2>
             <p>Decentralization ensures fairness and security by removing any single point of control. All game actions are executed within smart contracts, and data is stored on the blockchain.</p>
             <div class="grid">
@@ -249,7 +308,7 @@
                     </div>
                 </div>
             </div>
-            <button class="read-docs">DOCUMENTATION</button> <button class="play-now">PLAY NOW</a>
+            <button class="read-docs">DOCUMENTATION</button> <button class="play-now">PLAY NOW</button>
         </section>
     
         <section id="game-features" class="container">
@@ -257,7 +316,7 @@
             <div class="features">
                 <div class="feature">
                     <h3>Get Some Crypto</h3>
-                    <p>Get some USDC on Coinbase and fund your account. Withdraw funds at any time. Maintain complete control over your wallet.</p>
+                    <p>Get some USDC on <a href="https://coinbase.com" target="_blank">Coinbase</a> and fund your account. Withdraw funds at any time. Maintain complete control over your digital wallet.</p>
                 </div>
                 <div class="feature">
                     <h3>Join Your Game</h3>
@@ -269,37 +328,63 @@
         <section id="testimonials" class="container">
             <h2>Be Part Of</h2>
             <p>The worlds first fully decentralized peer to peer poker community.</p>
-            <div class="testimonials">
-                <div class="testimonial">
+            <div class="testimonials grid">
+                <div class="testimonial grid-item">
                     <img src="img/testimonial1.webp" alt="Testimonial">
                     <p>"DecentPoker has completely revolutionized how we think about poker. The house always wins, except when there is no house. It's the only choice for any serious player"</p>
                 </div>
-                <div class="testimonial">
-                    <img src="img/testimonial2.webp" alt="Testimonial">
+                <div class="testimonial grid-item">
                     <p>"Joining the community has been fantastic, providing both security and a social, engaging environment. I highly recommend it to anyone looking for an exciting poker experience"</p>
+                    <img src="img/testimonial2.webp" alt="Testimonial">
                 </div>
-                <p>⭐⭐⭐⭐⭐</p>
             </div>
+            <button class="play-now">JOIN IN TODAY</button>
+            <p>⭐⭐⭐⭐⭐</p>
         </section>
     
         <section id="security-fairness" class="container">
             <h2>Security and Fairness</h2>
-            <p>Our security protocols protect players and their data. The system uses blockchain verification to ensure fairness in every game.</p>
+            <h4>Ensuring a Secure and Trustworthy Poker Experience</h4>
+            <p>At DecentPoker, security and fairness are our top priorities. We understand the importance of creating a safe and reliable environment for our players, and we are committed to delivering a platform that you can trust.</p>
+        
+            <div class="security-item">
+                <h4>Decentralized Architecture</h4>
+                <p>Our game is built on a fully decentralized architecture. Unlike traditional online poker platforms that rely on centralized servers, DecentPoker leverages blockchain technology to ensure that no single party has control over the game. This eliminates the risk of central points of failure and enhances the overall security of our platform.</p>
+            </div>
+        
+            <div class="security-item">
+                <h4>Transparent and Verifiable Smart Contracts</h4>
+                <p>All game logic and transactions are handled by smart contracts, which are transparent and open-source. These contracts have been rigorously tested through extensive unit and integration tests to ensure their reliability and security. You can review our smart contracts and unit tests on our <a href="https://github.com/DecentPokerLabs/DecentPoker/" target="_blank">GitHub repository</a>. By making our code open-source, we invite the community to verify and audit our contracts, fostering trust and transparency.</p>
+            </div>
+        
+            <div class="security-item">
+                <h4>Trustless Card Dealing</h4>
+                <p>One of the key innovations of DecentPoker is our trustless card dealing mechanism. Traditional online poker platforms rely on a centralized dealer, which can be a point of manipulation and unfair play. At DecentPoker, cards are dealt using cryptographic commitments and blockhashes, ensuring randomness and fairness without the need for a third-party dealer. Each player deals from their own deck, and shared community cards are generated in a verifiable and tamper-proof manner.</p>
+            </div>
+
+            <h4>Join Us in Creating a Fair Poker Ecosystem</h4>
+            <p>DecentPoker is dedicated to revolutionizing the online poker landscape by prioritizing security and fairness. We believe that a transparent, decentralized, and community-driven approach is the key to building a trustworthy platform. Join us on this journey and experience poker the way it was meant to be played.</p>
+            <button class="play-now">PLAY NOW</button>
         </section>
+        
     
         <section id="blog-news" class="container">
-            <h2>Blog / News</h2>
-            <p>Stay updated with the latest features, events, and company news. Read educational content about poker strategies, blockchain technology, and decentralized gaming.</p>
+            <h2>Newsletter</h2>
+            <p>Stay updated with the latest features, events, and company news.</p>
+            <iframe src="https://decentpoker.substack.com/embed" width="480" height="320" style="border:1px solid #EEE; background:white;" frameborder="0" scrolling="no"></iframe>              
+            <p>Read educational content about poker strategies, blockchain technology, and decentralized gaming.</p>
+            <a href="https://decentpoker.substack.com" target="_blank">https://decentpoker.substack.com</a>
         </section>
     
         <footer class="container">
             <a href="https://decentpoker.substack.com">News</a> | 
             <a href="https://decentpoker.org/learn">How To Play</a> | 
             <a href="https://github.com/DecentPokerLabs/DecentPoker">Github</a> | 
-            <a href="https://decentpoker.org/docs">Docs</a> | 
-            
-            <a href="https://decentpoker.org/contact">Contact</a> | 
-            <a href="https://decentpoker.org/legal">Legal</a> | 
+            <a href="https://decentpoker.org/DecentPoker-Whitepaper.pdf">Whitepaper</a> | 
+            <a href="https://github.com/DecentPokerLabs/DecentPoker">Docs</a> | 
+            <a href="https://x.com/DecentPokerLabs">@DecentPokerLabs</a>
+            <a href="mailto:decentpokerlabs@proton.me">Contact</a> | 
+            <a href="https://decentpoker.org/DecentPoker-Legal.pdf">Legal</a> | 
             <p>DecentPoker is a community built project,<a href="https://github.com/DecentPokerLabs/DecentPoker">get involved?</a></p>
             <p>∞</p>
         </footer>
@@ -312,7 +397,7 @@
         });
         document.querySelectorAll('.read-docs').forEach(element => {
             element.addEventListener('click', () => {
-                window.location.href = 'https://github.com/DecentPokerLabs/DecentPoker';
+                window.location.href = 'https://decentpoker.org/DecentPoker-Whitepaper.pdf';
             });
         });
     </script>
