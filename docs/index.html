@@ -72,10 +72,15 @@
         }
         .hero {
             position: relative;
-            background: linear-gradient(rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 1)), url('img/hero.webp') no-repeat center center/cover;
+            background: linear-gradient(rgba(0, 0, 0, 1), rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 1)), url('img/hero.webp') no-repeat center center/cover;
             background-blend-mode: darken;
             padding: 150px 20px;
             color: #fff; /* Ensure text remains readable */
+        }
+        .rotate-notice .logo {
+            font-family: "Playfair Display", 'Times New Roman', Times, serif;
+            font-size: 25px;
+            margin-top: -50px;
         }
         .hero .logo {
             font-family: "Playfair Display", 'Times New Roman', Times, serif;
@@ -220,6 +225,7 @@
         }
 
         footer a {
+            font-size: 0.9em;
             color: #6C63FF;
             text-decoration: none;
             margin: 0 10px;
@@ -256,11 +262,26 @@
                 display: block;
             }
         }
+
+        @media screen and (orientation: landscape) and (max-height: 500px) {
+            .hero {
+                padding: 30px;
+            }
+            .hero .play-now {
+                margin: 10px auto;
+            }
+            #how-it-works p {
+                font-size: 0.9em;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="rotate-notice">
-        Please rotate your device to landscape mode.
+        <div>
+            <div class="logo">Decent<span class="grey">Poker</span></div>
+            <p>Please rotate your device to landscape mode</p>
+        </div>
     </div>
       
     <div class="content">
@@ -384,14 +405,14 @@
         </section>
     
         <footer class="container">
-            <a href="https://decentpoker.substack.com">News</a> | 
-            <a href="https://decentpoker.org/learn">How To Play</a> | 
-            <a href="https://github.com/DecentPokerLabs/DecentPoker">Github</a> | 
-            <a href="https://decentpoker.org/DecentPoker-Whitepaper.pdf">Whitepaper</a> | 
-            <a href="https://github.com/DecentPokerLabs/DecentPoker">Docs</a> | 
-            <a href="https://x.com/DecentPokerLabs">@DecentPokerLabs</a>
-            <a href="mailto:decentpokerlabs@proton.me">Contact</a> | 
-            <a href="https://decentpoker.org/DecentPoker-Legal.pdf">Legal</a> | 
+            <a href="https://decentpoker.substack.com">News</a> <span class="grey">|</span>
+            <a href="https://decentpoker.org/learn">How To Play</a> <span class="grey">|</span>
+            <a href="https://github.com/DecentPokerLabs/DecentPoker">Github</a> <span class="grey">|</span>
+            <a href="https://decentpoker.org/DecentPoker-Whitepaper.pdf">Whitepaper</a> <span class="grey">|</span>
+            <a href="https://github.com/DecentPokerLabs/DecentPoker">Docs</a> <span class="grey">|</span>
+            <a href="https://x.com/DecentPokerLabs">@DecentPokerLabs</a> <span class="grey">|</span>
+            <a href="mailto:decentpokerlabs@proton.me">Contact</a> <span class="grey">|</span>
+            <a href="https://decentpoker.org/DecentPoker-Legal.pdf">Legal</a>
             <p>DecentPoker is a community built project,<a href="https://github.com/DecentPokerLabs/DecentPoker">get involved?</a></p>
             <p>∞</p>
         </footer>
