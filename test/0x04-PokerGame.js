@@ -38,8 +38,8 @@ function checkPossibleOutcomes(finalBalances, possibleOutcomes) {
 
 const nullHash = '0x' + '0'.repeat(64);
 
-describe("PokerGame.sol Comprehensive Tests", function () {
-    let pokerGame, handEvaluator, pokerChips, pokerDealer, usdc;
+describe("PokerGame.sol", function () {
+    let pokerGame, handEvaluator, pokerChips, pokerDealer, pokerLobby;
     let owner, addr1, addr2, addr3, addr4, addr5, addr6, addr7, addr8, addr9, addr10;
 
     beforeEach(async function () {
@@ -48,42 +48,42 @@ describe("PokerGame.sol Comprehensive Tests", function () {
         const HandEvaluator = await ethers.getContractFactory("PokerHandEvaluator");
         handEvaluator = await HandEvaluator.deploy();
 
-        const MockUSDC = await ethers.getContractFactory("MockUSDC");
-        usdc = await MockUSDC.deploy("USD Coin", "USDC");
-
         const PokerChips = await ethers.getContractFactory("PokerChips");
-        pokerChips = await PokerChips.deploy(await usdc.getAddress());
+        pokerChips = await PokerChips.deploy();
 
         const PokerDealer = await ethers.getContractFactory("PokerDealer");
         pokerDealer = await PokerDealer.deploy();
 
+        const PokerLobby = await ethers.getContractFactory("PokerLobby");
+        pokerLobby = await PokerLobby.deploy();
+
         const PokerGame = await ethers.getContractFactory("PokerGame");
         pokerGame = await PokerGame.deploy(
             await handEvaluator.getAddress(),
-            await pokerChips.getAddress(),
             await pokerDealer.getAddress(),
+            await pokerLobby.getAddress(),
         );
 
+        await pokerLobby.setPokerGameAddress(await pokerGame.getAddress());
+
         for (const addr of [addr1, addr2, addr3, addr4, addr5, addr6, addr7, addr8, addr9, addr10]) {
-            await usdc.mint(addr.address, 1000000);
-            await usdc.connect(addr).approve(await pokerChips.getAddress(), 100000);
-            await pokerChips.connect(addr).depositUSDC(100000);
+            await pokerChips.connect(addr).mint(100000);
         }
     });
 
     describe("Game Creation", function () {
         it("Should fail to create a game with max players > 10", async function () {
-            await expect(pokerGame.createGame(11, 2, nullHash))
+            await expect(pokerLobby.createCashGame(11, 2, nullHash, await pokerChips.getAddress()))
                 .to.be.revertedWith("Invalid number of players");
         });
 
         it("Should fail to create a game with max players < 2", async function () {
-            await expect(pokerGame.createGame(1, 2, nullHash))
+            await expect(pokerLobby.createCashGame(1, 2, nullHash, await pokerChips.getAddress()))
                 .to.be.revertedWith("Invalid number of players");
         });
 
         it("Should fail to create a game with big blind = 0", async function () {
-            await expect(pokerGame.createGame(6, 0, nullHash))
+            await expect(pokerLobby.createCashGame(6, 0, nullHash, await pokerChips.getAddress()))
                 .to.be.revertedWith("Invalid _bigBlind value");
         });
     });
@@ -92,56 +92,57 @@ describe("PokerGame.sol Comprehensive Tests", function () {
         let gameId;
 
         beforeEach(async function () {
-            const tx = await pokerGame.createGame(6, 2, nullHash);
+            const tx = await pokerLobby.createCashGame(6, 2, nullHash, await pokerChips.getAddress());
             const receipt = await tx.wait();
-            gameId = receipt.logs[0].args[0];
-            await pokerChips.connect(addr1).approve(await pokerGame.getAddress(), 200);
-            await pokerChips.connect(addr2).approve(await pokerGame.getAddress(), 200);
-            await pokerChips.connect(addr3).approve(await pokerGame.getAddress(), 200);
-            await pokerChips.connect(addr4).approve(await pokerGame.getAddress(), 200);
+            gameId = receipt.logs[1].args[0];
+            await pokerLobby.createCashGame(6, 2, nullHash, await pokerChips.getAddress());
+            await pokerChips.connect(addr1).approve(await pokerLobby.getAddress(), 200);
+            await pokerChips.connect(addr2).approve(await pokerLobby.getAddress(), 200);
+            await pokerChips.connect(addr3).approve(await pokerLobby.getAddress(), 200);
+            await pokerChips.connect(addr4).approve(await pokerLobby.getAddress(), 200);
         });
 
         it("Should fail to join a non-existent game", async function () {
-            await expect(pokerGame.connect(addr1).joinGame(999, 0, ethers.randomBytes(32), nullHash))
+            await expect(pokerLobby.connect(addr1).joinCashGame(999, 0, ethers.randomBytes(32), nullHash))
                 .to.be.revertedWith("Game not found");
         });
 
         it("Should fail to join a game twice", async function () {
-            await pokerChips.connect(addr1).approve(await pokerGame.getAddress(), 400);
-            await pokerGame.connect(addr1).joinGame(gameId, 0, ethers.randomBytes(32), nullHash);
-            await expect(pokerGame.connect(addr1).joinGame(gameId, 1, ethers.randomBytes(32), nullHash))
+            await pokerChips.connect(addr1).approve(await pokerLobby.getAddress(), 400);
+            await pokerLobby.connect(addr1).joinCashGame(gameId, 0, ethers.randomBytes(32), nullHash);
+            await expect(pokerLobby.connect(addr1).joinCashGame(gameId, 1, ethers.randomBytes(32), nullHash))
                 .to.be.revertedWith("Already in game");
         });
 
         it("Should fail to join a occupied seat", async function () {
-            await pokerChips.connect(addr1).approve(await pokerGame.getAddress(), 200);
-            await pokerChips.connect(addr2).approve(await pokerGame.getAddress(), 200);
-            await pokerGame.connect(addr1).joinGame(gameId, 1, ethers.randomBytes(32), nullHash);
-            await expect(pokerGame.connect(addr2).joinGame(gameId, 1, ethers.randomBytes(32), nullHash))
+            await pokerChips.connect(addr1).approve(await pokerLobby.getAddress(), 200);
+            await pokerChips.connect(addr2).approve(await pokerLobby.getAddress(), 200);
+            await pokerLobby.connect(addr1).joinCashGame(gameId, 1, ethers.randomBytes(32), nullHash);
+            await expect(pokerLobby.connect(addr2).joinCashGame(gameId, 1, ethers.randomBytes(32), nullHash))
                 .to.be.revertedWith("Seat taken");
         });
 
         it("Should fail to join a game with insufficient token approval", async function () {
-            await pokerChips.connect(addr10).approve(await pokerGame.getAddress(), 50); // Insufficient approval
-            await expect(pokerGame.connect(addr10).joinGame(gameId, 0, ethers.randomBytes(32), nullHash))
+            await pokerChips.connect(addr10).approve(await pokerLobby.getAddress(), 50); // Insufficient approval
+            await expect(pokerLobby.connect(addr10).joinCashGame(gameId, 0, ethers.randomBytes(32), nullHash))
                 .to.be.reverted;
         });
     
         it("Should fail to join a game with insufficient balance", async function () {
-            await pokerChips.connect(addr10).approve(await pokerGame.getAddress(), 200);
+            await pokerChips.connect(addr10).approve(await pokerLobby.getAddress(), 200);
             const bal = await pokerChips.balanceOf(addr10)
             await pokerChips.connect(addr10).transfer(owner.address, bal); // Drain balance
-            await expect(pokerGame.connect(addr10).joinGame(gameId, 0, ethers.randomBytes(32), nullHash))
+            await expect(pokerLobby.connect(addr10).joinCashGame(gameId, 0, ethers.randomBytes(32), nullHash))
                 .to.be.reverted;
         });
 
         it("Should correctly rotate dealer position", async function () {
             const handPrivateKey = ethers.encodeBytes32String("secret");
             const handPublicKey = ethers.keccak256(handPrivateKey);
-            await pokerGame.connect(addr1).joinGame(gameId, 1, handPublicKey, nullHash);
-            await pokerGame.connect(addr2).joinGame(gameId, 3, handPublicKey, nullHash);
-            await pokerGame.connect(addr3).joinGame(gameId, 5, handPublicKey, nullHash);
-            await pokerGame.connect(addr4).joinGame(gameId, 2, handPublicKey, nullHash);
+            await pokerLobby.connect(addr1).joinCashGame(gameId, 1, handPublicKey, nullHash);
+            await pokerLobby.connect(addr2).joinCashGame(gameId, 3, handPublicKey, nullHash);
+            await pokerLobby.connect(addr3).joinCashGame(gameId, 5, handPublicKey, nullHash);
+            await pokerLobby.connect(addr4).joinCashGame(gameId, 2, handPublicKey, nullHash);
             await pokerGame.connect(addr1).dealHand(gameId);
             const dealer = await pokerGame.getDealer(gameId);
             expect(dealer).to.equal(addr1.address);
@@ -159,13 +160,13 @@ describe("PokerGame.sol Comprehensive Tests", function () {
         it("Should allow setup and joining of a private game", async function () {
             const invitePrivateKey = ethers.randomBytes(32)
             const invitePublicKey = ethers.keccak256(invitePrivateKey);
-            const tx = await pokerGame.createGame(6, 2, invitePublicKey);
+            const tx = await pokerLobby.createCashGame(6, 2, invitePublicKey, await pokerChips.getAddress());
             const receipt = await tx.wait();
-            const gameId = receipt.logs[0].args[0];
+            const gameId = receipt.logs[1].args[0];
             const handPrivateKey = ethers.encodeBytes32String("secret");
             const handPublicKey = ethers.keccak256(handPrivateKey);
-            await pokerGame.connect(addr1).joinGame(gameId, 1, handPublicKey, invitePrivateKey);
-            await pokerGame.connect(addr2).joinGame(gameId, 3, handPublicKey, invitePrivateKey);
+            await pokerLobby.connect(addr1).joinCashGame(gameId, 1, handPublicKey, invitePrivateKey);
+            await pokerLobby.connect(addr2).joinCashGame(gameId, 3, handPublicKey, invitePrivateKey);
             await pokerGame.connect(addr1).dealHand(gameId);
             const dealer = await pokerGame.getDealer(gameId);
             expect(dealer).to.equal(addr1.address);
@@ -174,28 +175,28 @@ describe("PokerGame.sol Comprehensive Tests", function () {
         it("Should reject a bad invite code", async function () {
             let invitePrivateKey = ethers.randomBytes(32);
             const invitePublicKey = ethers.keccak256(invitePrivateKey);
-            const tx = await pokerGame.createGame(6, 2, invitePublicKey);
+            const tx = await pokerLobby.createCashGame(6, 2, invitePublicKey, await pokerChips.getAddress());
             const receipt = await tx.wait();
-            const gameId = receipt.logs[0].args[0];
+            const gameId = receipt.logs[1].args[0];
             const handPrivateKey = ethers.encodeBytes32String("secret");
             const handPublicKey = ethers.keccak256(handPrivateKey);
             invitePrivateKey = ethers.randomBytes(32); // make bad
             
-            await expect(pokerGame.connect(addr1).joinGame(gameId, 1, handPublicKey, invitePrivateKey))
+            await expect(pokerLobby.connect(addr1).joinCashGame(gameId, 1, handPublicKey, invitePrivateKey))
                 .to.be.revertedWith("invitePrivateKey invalid");
         });
 
         it("Should allow a player to rejoin after leaving", async function () {
-            await pokerGame.connect(addr1).joinGame(gameId, 0, ethers.randomBytes(32), nullHash);
+            await pokerLobby.connect(addr1).joinCashGame(gameId, 0, ethers.randomBytes(32), nullHash);
             await pokerGame.connect(addr1).leaveGame(gameId);
-            await pokerChips.connect(addr1).approve(await pokerGame.getAddress(), 200);
-            await pokerGame.connect(addr1).joinGame(gameId, 0, ethers.randomBytes(32), nullHash);
+            await pokerChips.connect(addr1).approve(await pokerLobby.getAddress(), 200);
+            await pokerLobby.connect(addr1).joinCashGame(gameId, 0, ethers.randomBytes(32), nullHash);
             const seatNo = await pokerGame.getSeat(gameId, addr1.address);
             expect(seatNo).to.equal(0);
         });
 
         it("Should fail to deal hand if not enough players have joined", async function () {
-            await pokerGame.connect(addr1).joinGame(gameId, 0, ethers.randomBytes(32), nullHash);
+            await pokerLobby.connect(addr1).joinCashGame(gameId, 0, ethers.randomBytes(32), nullHash);
             await expect(pokerGame.connect(addr1).dealHand(gameId))
                 .to.be.revertedWith("Not enough players");
         });
@@ -209,19 +210,19 @@ describe("PokerGame.sol Comprehensive Tests", function () {
         let initialBalance3;
 
         beforeEach(async function () {
-            const tx = await pokerGame.connect(owner).createGame(9, 2, nullHash);
+            const tx = await pokerLobby.connect(owner).createCashGame(9, 2, nullHash, await pokerChips.getAddress());
             const receipt = await tx.wait();
-            gameId = receipt.logs[0].args[0];
+            gameId = receipt.logs[1].args[0];
 
-            await pokerChips.connect(addr1).approve(await pokerGame.getAddress(), 2000);
-            await pokerChips.connect(addr2).approve(await pokerGame.getAddress(), 2000);
-            await pokerChips.connect(addr3).approve(await pokerGame.getAddress(), 2000);
-            await pokerChips.connect(addr4).approve(await pokerGame.getAddress(), 2000);
-            await pokerChips.connect(addr5).approve(await pokerGame.getAddress(), 2000);
-            await pokerChips.connect(addr6).approve(await pokerGame.getAddress(), 2000);
-            await pokerChips.connect(addr7).approve(await pokerGame.getAddress(), 2000);
-            await pokerChips.connect(addr8).approve(await pokerGame.getAddress(), 2000);
-            await pokerChips.connect(addr9).approve(await pokerGame.getAddress(), 2000);
+            await pokerChips.connect(addr1).approve(await pokerLobby.getAddress(), 2000);
+            await pokerChips.connect(addr2).approve(await pokerLobby.getAddress(), 2000);
+            await pokerChips.connect(addr3).approve(await pokerLobby.getAddress(), 2000);
+            await pokerChips.connect(addr4).approve(await pokerLobby.getAddress(), 2000);
+            await pokerChips.connect(addr5).approve(await pokerLobby.getAddress(), 2000);
+            await pokerChips.connect(addr6).approve(await pokerLobby.getAddress(), 2000);
+            await pokerChips.connect(addr7).approve(await pokerLobby.getAddress(), 2000);
+            await pokerChips.connect(addr8).approve(await pokerLobby.getAddress(), 2000);
+            await pokerChips.connect(addr9).approve(await pokerLobby.getAddress(), 2000);
         });
 
         it("Should simulate heads up play", async function () {
@@ -231,8 +232,8 @@ describe("PokerGame.sol Comprehensive Tests", function () {
             const handPublicKey1 = ethers.keccak256(handPrivateKey1);
             const handPrivateKey2 = ethers.encodeBytes32String("secret2");
             const handPublicKey2 = ethers.keccak256(handPrivateKey2);
-            await pokerGame.connect(addr1).joinGame(gameId, 1, handPublicKey1, nullHash);
-            await pokerGame.connect(addr2).joinGame(gameId, 3, handPublicKey2, nullHash);
+            await pokerLobby.connect(addr1).joinCashGame(gameId, 1, handPublicKey1, nullHash);
+            await pokerLobby.connect(addr2).joinCashGame(gameId, 3, handPublicKey2, nullHash);
             await pokerGame.connect(owner).dealHand(gameId);
             const dealer = await pokerGame.getDealer(gameId);
             expect(dealer).to.equal(addr1.address);
@@ -272,9 +273,9 @@ describe("PokerGame.sol Comprehensive Tests", function () {
             const handPublicKey2 = ethers.keccak256(handPrivateKey2);
             const handPrivateKey3 = ethers.encodeBytes32String("secret3");
             const handPublicKey3 = ethers.keccak256(handPrivateKey3);
-            await pokerGame.connect(addr1).joinGame(gameId, 0, handPublicKey1, nullHash);
-            await pokerGame.connect(addr2).joinGame(gameId, 1, handPublicKey2, nullHash);
-            await pokerGame.connect(addr3).joinGame(gameId, 2, handPublicKey3, nullHash);
+            await pokerLobby.connect(addr1).joinCashGame(gameId, 0, handPublicKey1, nullHash);
+            await pokerLobby.connect(addr2).joinCashGame(gameId, 1, handPublicKey2, nullHash);
+            await pokerLobby.connect(addr3).joinCashGame(gameId, 2, handPublicKey3, nullHash);
             await pokerGame.connect(addr1).dealHand(gameId);
             const dealer = await pokerGame.getDealer(gameId);
             expect(dealer).to.equal(addr2.address);
@@ -329,7 +330,7 @@ describe("PokerGame.sol Comprehensive Tests", function () {
             const handPublicKeys = handPrivateKeys.map(pk => ethers.keccak256(pk));
         
             for (let p = 0; p < 9; p++) {
-                await pokerGame.connect(players[p]).joinGame(gameId, p, handPublicKeys[p], nullHash);
+                await pokerLobby.connect(players[p]).joinCashGame(gameId, p, handPublicKeys[p], nullHash);
             }
             
             await pokerGame.connect(addr1).dealHand(gameId);
@@ -416,41 +417,41 @@ describe("PokerGame.sol Comprehensive Tests", function () {
         let gameId;
 
         beforeEach(async function () {
-            const tx = await pokerGame.createGame(6, 2, nullHash);
+            const tx = await pokerLobby.createCashGame(6, 2, nullHash, await pokerChips.getAddress());
             const receipt = await tx.wait();
-            gameId = receipt.logs[0].args[0];
-            await pokerChips.connect(addr1).approve(await pokerGame.getAddress(), 200);
-            await pokerChips.connect(addr2).approve(await pokerGame.getAddress(), 200);
-            await pokerChips.connect(addr3).approve(await pokerGame.getAddress(), 200);
-            await pokerChips.connect(addr4).approve(await pokerGame.getAddress(), 200);
+            gameId = receipt.logs[1].args[0];
+            await pokerChips.connect(addr1).approve(await pokerLobby.getAddress(), 200);
+            await pokerChips.connect(addr2).approve(await pokerLobby.getAddress(), 200);
+            await pokerChips.connect(addr3).approve(await pokerLobby.getAddress(), 200);
+            await pokerChips.connect(addr4).approve(await pokerLobby.getAddress(), 200);
         });
 
         it("Should fail to deal hand before minimum players have joined", async function () {
-            await pokerGame.connect(addr1).joinGame(gameId, 1, ethers.randomBytes(32), nullHash);
+            await pokerLobby.connect(addr1).joinCashGame(gameId, 1, ethers.randomBytes(32), nullHash);
             await expect(pokerGame.connect(addr1).dealHand(gameId))
                 .to.be.revertedWith("Not enough players");
         });
 
         it("Should fail to take action when it's not player's turn", async function () {
-            await pokerGame.connect(addr1).joinGame(gameId, 1, ethers.randomBytes(32), nullHash);
-            await pokerGame.connect(addr2).joinGame(gameId, 3, ethers.randomBytes(32), nullHash);
-            await pokerGame.connect(addr3).joinGame(gameId, 5, ethers.randomBytes(32), nullHash);
+            await pokerLobby.connect(addr1).joinCashGame(gameId, 1, ethers.randomBytes(32), nullHash);
+            await pokerLobby.connect(addr2).joinCashGame(gameId, 3, ethers.randomBytes(32), nullHash);
+            await pokerLobby.connect(addr3).joinCashGame(gameId, 5, ethers.randomBytes(32), nullHash);
             await pokerGame.connect(addr1).dealHand(gameId);
             await expect(pokerGame.connect(addr2).playerAction(gameId, 1, 0))
                 .to.be.revertedWith("It's not your turn");
         });
 
         it("Should fail to take invalid action", async function () {
-            await pokerGame.connect(addr1).joinGame(gameId, 1, ethers.randomBytes(32), nullHash);
-            await pokerGame.connect(addr2).joinGame(gameId, 3, ethers.randomBytes(32), nullHash);
+            await pokerLobby.connect(addr1).joinCashGame(gameId, 1, ethers.randomBytes(32), nullHash);
+            await pokerLobby.connect(addr2).joinCashGame(gameId, 3, ethers.randomBytes(32), nullHash);
             await pokerGame.connect(addr1).dealHand(gameId);
             await expect(pokerGame.connect(addr3).playerAction(gameId, 5, 0))
                 .to.be.reverted;
         });
 
         it("Should fail to reveal hand before showdown", async function () {
-            await pokerGame.connect(addr1).joinGame(gameId, 1, ethers.randomBytes(32), nullHash);
-            await pokerGame.connect(addr2).joinGame(gameId, 3, ethers.randomBytes(32), nullHash);
+            await pokerLobby.connect(addr1).joinCashGame(gameId, 1, ethers.randomBytes(32), nullHash);
+            await pokerLobby.connect(addr2).joinCashGame(gameId, 3, ethers.randomBytes(32), nullHash);
             await pokerGame.connect(addr1).dealHand(gameId);
             await expect(pokerGame.connect(addr1).revealHand(gameId, ethers.randomBytes(32), ethers.randomBytes(32)))
                 .to.be.revertedWith("Not in showdown state");
@@ -461,8 +462,8 @@ describe("PokerGame.sol Comprehensive Tests", function () {
             const handPublicKey1 = ethers.keccak256(handPrivateKey1);
             const handPrivateKey2 = ethers.encodeBytes32String("secrets2");
             const handPublicKey2 = ethers.keccak256(handPrivateKey2);
-            await pokerGame.connect(addr1).joinGame(gameId, 1, handPublicKey1, nullHash);
-            await pokerGame.connect(addr2).joinGame(gameId, 3, handPublicKey2, nullHash);
+            await pokerLobby.connect(addr1).joinCashGame(gameId, 1, handPublicKey1, nullHash);
+            await pokerLobby.connect(addr2).joinCashGame(gameId, 3, handPublicKey2, nullHash);
             initialBalance1 = await pokerGame.getChips(gameId, addr1.address);
             initialBalance2 = await pokerGame.getChips(gameId, addr2.address);
             await pokerGame.connect(owner).dealHand(gameId);
@@ -494,9 +495,9 @@ describe("PokerGame.sol Comprehensive Tests", function () {
             const handPublicKey2 = ethers.keccak256(handPrivateKey2);
             const handPrivateKey3 = ethers.encodeBytes32String("secret3");
             const handPublicKey3 = ethers.keccak256(handPrivateKey3);
-            await pokerGame.connect(addr1).joinGame(gameId, 1, handPublicKey1, nullHash);
-            await pokerGame.connect(addr2).joinGame(gameId, 3, handPublicKey2, nullHash);
-            await pokerGame.connect(addr3).joinGame(gameId, 5, handPublicKey3, nullHash)
+            await pokerLobby.connect(addr1).joinCashGame(gameId, 1, handPublicKey1, nullHash);
+            await pokerLobby.connect(addr2).joinCashGame(gameId, 3, handPublicKey2, nullHash);
+            await pokerLobby.connect(addr3).joinCashGame(gameId, 5, handPublicKey3, nullHash)
             await pokerGame.connect(addr1).dealHand(gameId);
             const dealer = await pokerGame.getDealer(gameId);
             expect(dealer).to.equal(addr1.address);
@@ -521,9 +522,9 @@ describe("PokerGame.sol Comprehensive Tests", function () {
         it("Should handle a game where players have exactly the same hand", async function () {
             const handPrivateKey1 = ethers.encodeBytes32String("secret1");
             const handPublicKey1 = ethers.keccak256(handPrivateKey1);
-            await pokerGame.connect(addr1).joinGame(gameId, 1, handPublicKey1, nullHash);
-            await pokerGame.connect(addr2).joinGame(gameId, 3, handPublicKey1, nullHash);
-            await pokerGame.connect(addr3).joinGame(gameId, 5, handPublicKey1, nullHash)
+            await pokerLobby.connect(addr1).joinCashGame(gameId, 1, handPublicKey1, nullHash);
+            await pokerLobby.connect(addr2).joinCashGame(gameId, 3, handPublicKey1, nullHash);
+            await pokerLobby.connect(addr3).joinCashGame(gameId, 5, handPublicKey1, nullHash)
             const initialBalance1 = await pokerGame.getChips(gameId, addr1.address);
             const initialBalance2 = await pokerGame.getChips(gameId, addr2.address);
             const initialBalance3 = await pokerGame.getChips(gameId, addr3.address);
@@ -558,22 +559,22 @@ describe("PokerGame.sol Comprehensive Tests", function () {
         let handPrivateKey1, handPrivateKey2, handPrivateKey3, handPublicKey1, handPublicKey2, handPublicKey3;
 
         beforeEach(async function () {
-            const tx = await pokerGame.createGame(6, 2, nullHash);
+            const tx = await pokerLobby.createCashGame(6, 2, nullHash, await pokerChips.getAddress());
             const receipt = await tx.wait();
-            gameId = receipt.logs[0].args[0];
-            await pokerChips.connect(addr1).approve(await pokerGame.getAddress(), 200);
-            await pokerChips.connect(addr2).approve(await pokerGame.getAddress(), 200);
-            await pokerChips.connect(addr3).approve(await pokerGame.getAddress(), 200);
-            await pokerChips.connect(addr4).approve(await pokerGame.getAddress(), 200);
+            gameId = receipt.logs[1].args[0];
+            await pokerChips.connect(addr1).approve(await pokerLobby.getAddress(), 200);
+            await pokerChips.connect(addr2).approve(await pokerLobby.getAddress(), 200);
+            await pokerChips.connect(addr3).approve(await pokerLobby.getAddress(), 200);
+            await pokerChips.connect(addr4).approve(await pokerLobby.getAddress(), 200);
             handPrivateKey1 = ethers.encodeBytes32String("secret1");
             handPublicKey1 = ethers.keccak256(handPrivateKey1);
             handPrivateKey2 = ethers.encodeBytes32String("secret2");
             handPublicKey2 = ethers.keccak256(handPrivateKey2);
             handPrivateKey3 = ethers.encodeBytes32String("secret3");
             handPublicKey3 = ethers.keccak256(handPrivateKey3);
-            await pokerGame.connect(addr1).joinGame(gameId, 1, handPublicKey1, nullHash);
-            await pokerGame.connect(addr2).joinGame(gameId, 3, handPublicKey2, nullHash);
-            await pokerGame.connect(addr3).joinGame(gameId, 5, handPublicKey3, nullHash);
+            await pokerLobby.connect(addr1).joinCashGame(gameId, 1, handPublicKey1, nullHash);
+            await pokerLobby.connect(addr2).joinCashGame(gameId, 3, handPublicKey2, nullHash);
+            await pokerLobby.connect(addr3).joinCashGame(gameId, 5, handPublicKey3, nullHash);
             initialBalance1 = await pokerGame.getChips(gameId, addr1.address);
             initialBalance2 = await pokerGame.getChips(gameId, addr2.address);
             initialBalance3 = await pokerGame.getChips(gameId, addr3.address);
@@ -731,22 +732,22 @@ describe("PokerGame.sol Comprehensive Tests", function () {
         let handPrivateKey1, handPrivateKey2, handPrivateKey3, handPublicKey1, handPublicKey2, handPublicKey3;
 
         beforeEach(async function () {
-            const tx = await pokerGame.createGame(6, 2, nullHash);
+            const tx = await pokerLobby.createCashGame(6, 2, nullHash, await pokerChips.getAddress());
             const receipt = await tx.wait();
-            gameId = receipt.logs[0].args[0];
-            await pokerChips.connect(addr1).approve(await pokerGame.getAddress(), 200);
-            await pokerChips.connect(addr2).approve(await pokerGame.getAddress(), 200);
-            await pokerChips.connect(addr3).approve(await pokerGame.getAddress(), 200);
-            await pokerChips.connect(addr4).approve(await pokerGame.getAddress(), 200);
+            gameId = receipt.logs[1].args[0];
+            await pokerChips.connect(addr1).approve(await pokerLobby.getAddress(), 200);
+            await pokerChips.connect(addr2).approve(await pokerLobby.getAddress(), 200);
+            await pokerChips.connect(addr3).approve(await pokerLobby.getAddress(), 200);
+            await pokerChips.connect(addr4).approve(await pokerLobby.getAddress(), 200);
             handPrivateKey1 = ethers.encodeBytes32String("secret1");
             handPublicKey1 = ethers.keccak256(handPrivateKey1);
             handPrivateKey2 = ethers.encodeBytes32String("secret2");
             handPublicKey2 = ethers.keccak256(handPrivateKey2);
             handPrivateKey3 = ethers.encodeBytes32String("secret3");
             handPublicKey3 = ethers.keccak256(handPrivateKey3);
-            await pokerGame.connect(addr1).joinGame(gameId, 1, handPublicKey1, nullHash);
-            await pokerGame.connect(addr2).joinGame(gameId, 3, handPublicKey2, nullHash);
-            await pokerGame.connect(addr3).joinGame(gameId, 5, handPublicKey3, nullHash);
+            await pokerLobby.connect(addr1).joinCashGame(gameId, 1, handPublicKey1, nullHash);
+            await pokerLobby.connect(addr2).joinCashGame(gameId, 3, handPublicKey2, nullHash);
+            await pokerLobby.connect(addr3).joinCashGame(gameId, 5, handPublicKey3, nullHash);
             initialBalance1 = await pokerGame.getChips(gameId, addr1.address);
             initialBalance2 = await pokerGame.getChips(gameId, addr2.address);
             initialBalance3 = await pokerGame.getChips(gameId, addr3.address);
@@ -792,7 +793,7 @@ describe("PokerGame.sol Comprehensive Tests", function () {
             const finalBalance2 = await pokerGame.getChips(gameId, addr2.address);
             const finalBalance3 = await pokerGame.getChips(gameId, addr3.address);
             const balances = [finalBalance1, finalBalance2, finalBalance3];
-            console.log(balances);
+            //console.log(balances);
             const possibleOutcomes = [[450n, 150n, 0n], [0n, 600n, 0n], [0n, 150n, 450n], [225n, 375n, 0n], [225n, 150n, 225n], [0n, 375n, 225n], [200n, 200n, 200n], [150n, 300n, 150n]];
             expect(checkPossibleOutcomes(balances, possibleOutcomes)).to.equal(true);
         });
@@ -837,7 +838,7 @@ describe("PokerGame.sol Comprehensive Tests", function () {
             const finalBalance2 = await pokerGame.getChips(gameId, addr2.address);
             const finalBalance3 = await pokerGame.getChips(gameId, addr3.address);
             const balances = [finalBalance1, finalBalance2, finalBalance3];
-            console.log(balances);
+            //console.log(balances);
             const possibleOutcomes = [[450n, 150n, 0n], [0n, 600n, 0n], [0n, 150n, 450n], [225n, 375n, 0n], [225n, 150n, 225n], [0n, 375n, 225n], [200n, 200n, 200n], [150n, 300n, 150n]];
             expect(checkPossibleOutcomes(balances, possibleOutcomes)).to.equal(true);
         });
@@ -880,7 +881,7 @@ describe("PokerGame.sol Comprehensive Tests", function () {
             const finalBalance2 = await pokerGame.getChips(gameId, addr2.address);
             const finalBalance3 = await pokerGame.getChips(gameId, addr3.address);
             const balances = [finalBalance1, finalBalance2, finalBalance3];
-            console.log(balances);
+            //console.log(balances);
             const possibleOutcomes = [[450n, 150n, 0n], [0n, 600n, 0n], [0n, 150n, 450n], [225n, 375n, 0n], [225n, 150n, 225n], [0n, 375n, 225n], [200n, 200n, 200n], [150n, 300n, 150n]];
             expect(checkPossibleOutcomes(balances, possibleOutcomes)).to.equal(true);
         });
@@ -950,7 +951,7 @@ describe("PokerGame.sol Comprehensive Tests", function () {
             const finalBalance2 = await pokerGame.getChips(gameId, addr2.address);
             const finalBalance3 = await pokerGame.getChips(gameId, addr3.address);
             const balances = [finalBalance1, finalBalance2, finalBalance3];
-            console.log(balances);
+            //console.log(balances);
             const possibleOutcomes = [[300n, 300n, 0n], [300n, 0n, 300n], [0n, 600n, 0n], [0n, 0n, 600n], [150n, 450n, 0n], [150n, 0n, 450n], [0n, 400n, 200n], [100n, 350n, 150n], [0n, 300n, 300n], [100n, 250, 250n]];
             expect(checkPossibleOutcomes(balances, possibleOutcomes)).to.equal(true);
         });
@@ -1008,7 +1009,7 @@ describe("PokerGame.sol Comprehensive Tests", function () {
             const finalBalance2 = await pokerGame.getChips(gameId, addr2.address);
             const finalBalance3 = await pokerGame.getChips(gameId, addr3.address);
             const balances = [finalBalance1, finalBalance2, finalBalance3];
-            console.log(balances);
+            //console.log(balances);
             const possibleOutcomes = [[390n, 210n, 0n], [0n, 600n, 0n], [0n, 0n, 600n], [390n, 90n, 120n], [195n, 345n, 0n], [195n, 210n, 195n], [0n, 345n, 255n], [130n, 340n, 130n], [0n, 90n, 510n], [390n, 150n, 60n],[130n, 280n, 190n]];
             expect(checkPossibleOutcomes(balances, possibleOutcomes)).to.equal(true);
         });
@@ -1020,22 +1021,22 @@ describe("PokerGame.sol Comprehensive Tests", function () {
         let handPrivateKey1, handPrivateKey2, handPrivateKey3, handPublicKey1, handPublicKey2, handPublicKey3;
 
         beforeEach(async function () {
-            const tx = await pokerGame.createGame(6, 2, nullHash);
+            const tx = await pokerLobby.createCashGame(6, 2, nullHash, await pokerChips.getAddress());
             const receipt = await tx.wait();
-            gameId = receipt.logs[0].args[0];
-            await pokerChips.connect(addr1).approve(await pokerGame.getAddress(), 200);
-            await pokerChips.connect(addr2).approve(await pokerGame.getAddress(), 200);
-            await pokerChips.connect(addr3).approve(await pokerGame.getAddress(), 200);
-            await pokerChips.connect(addr4).approve(await pokerGame.getAddress(), 200);
+            gameId = receipt.logs[1].args[0];
+            await pokerChips.connect(addr1).approve(await pokerLobby.getAddress(), 200);
+            await pokerChips.connect(addr2).approve(await pokerLobby.getAddress(), 200);
+            await pokerChips.connect(addr3).approve(await pokerLobby.getAddress(), 200);
+            await pokerChips.connect(addr4).approve(await pokerLobby.getAddress(), 200);
             handPrivateKey1 = ethers.encodeBytes32String("secret1");
             handPublicKey1 = ethers.keccak256(handPrivateKey1);
             handPrivateKey2 = ethers.encodeBytes32String("secret2");
             handPublicKey2 = ethers.keccak256(handPrivateKey2);
             handPrivateKey3 = ethers.encodeBytes32String("secret3");
             handPublicKey3 = ethers.keccak256(handPrivateKey3);
-            await pokerGame.connect(addr1).joinGame(gameId, 1, handPublicKey1, nullHash);
-            await pokerGame.connect(addr2).joinGame(gameId, 3, handPublicKey2, nullHash);
-            await pokerGame.connect(addr3).joinGame(gameId, 5, handPublicKey3, nullHash);
+            await pokerLobby.connect(addr1).joinCashGame(gameId, 1, handPublicKey1, nullHash);
+            await pokerLobby.connect(addr2).joinCashGame(gameId, 3, handPublicKey2, nullHash);
+            await pokerLobby.connect(addr3).joinCashGame(gameId, 5, handPublicKey3, nullHash);
             initialBalance1 = await pokerGame.getChips(gameId, addr1.address);
             initialBalance2 = await pokerGame.getChips(gameId, addr2.address);
             initialBalance3 = await pokerGame.getChips(gameId, addr3.address);
@@ -1178,13 +1179,13 @@ describe("PokerGame.sol Comprehensive Tests", function () {
         let handPrivateKey, handPublicKey;
 
         beforeEach(async function () {
-            const tx = await pokerGame.createGame(6, 2, nullHash);
+            const tx = await pokerLobby.createCashGame(6, 2, nullHash, await pokerChips.getAddress());
             const receipt = await tx.wait();
-            gameId = receipt.logs[0].args[0];
-            await pokerChips.connect(addr1).approve(await pokerGame.getAddress(), 200);
-            await pokerChips.connect(addr2).approve(await pokerGame.getAddress(), 200);
-            await pokerChips.connect(addr3).approve(await pokerGame.getAddress(), 200);
-            await pokerChips.connect(addr4).approve(await pokerGame.getAddress(), 200);
+            gameId = receipt.logs[1].args[0];
+            await pokerChips.connect(addr1).approve(await pokerLobby.getAddress(), 200);
+            await pokerChips.connect(addr2).approve(await pokerLobby.getAddress(), 200);
+            await pokerChips.connect(addr3).approve(await pokerLobby.getAddress(), 200);
+            await pokerChips.connect(addr4).approve(await pokerLobby.getAddress(), 200);
 
             handPrivateKey = ethers.encodeBytes32String("sharedSecret");
             handPublicKey = ethers.keccak256(handPrivateKey);
@@ -1192,10 +1193,10 @@ describe("PokerGame.sol Comprehensive Tests", function () {
 
         it("Should correctly split the pot between two players in a 4 way game", async function () {
             
-            await pokerGame.connect(addr1).joinGame(gameId, 1, handPublicKey, nullHash); // same cards
-            await pokerGame.connect(addr2).joinGame(gameId, 2, handPublicKey, nullHash); // same cards
-            await pokerGame.connect(addr3).joinGame(gameId, 3, handPublicKey, nullHash); // same cards
-            await pokerGame.connect(addr4).joinGame(gameId, 4, handPublicKey, nullHash); // same cards
+            await pokerLobby.connect(addr1).joinCashGame(gameId, 1, handPublicKey, nullHash); // same cards
+            await pokerLobby.connect(addr2).joinCashGame(gameId, 2, handPublicKey, nullHash); // same cards
+            await pokerLobby.connect(addr3).joinCashGame(gameId, 3, handPublicKey, nullHash); // same cards
+            await pokerLobby.connect(addr4).joinCashGame(gameId, 4, handPublicKey, nullHash); // same cards
             initialBalance1 = await pokerGame.getChips(gameId, addr1.address);
             initialBalance2 = await pokerGame.getChips(gameId, addr2.address);
             initialBalance3 = await pokerGame.getChips(gameId, addr3.address);
@@ -1237,8 +1238,8 @@ describe("PokerGame.sol Comprehensive Tests", function () {
         });
 
         it("Should correctly split the pot between two players in a heads up game", async function () {
-            await pokerGame.connect(addr1).joinGame(gameId, 1, handPublicKey, nullHash); // same cards
-            await pokerGame.connect(addr2).joinGame(gameId, 2, handPublicKey, nullHash); // same cards
+            await pokerLobby.connect(addr1).joinCashGame(gameId, 1, handPublicKey, nullHash); // same cards
+            await pokerLobby.connect(addr2).joinCashGame(gameId, 2, handPublicKey, nullHash); // same cards
             initialBalance1 = await pokerGame.getChips(gameId, addr1.address);
             initialBalance2 = await pokerGame.getChips(gameId, addr2.address);
             await pokerGame.connect(owner).dealHand(gameId);
@@ -1271,9 +1272,9 @@ describe("PokerGame.sol Comprehensive Tests", function () {
         });
 
         it("Should correctly split the pot three ways", async function () {
-            await pokerGame.connect(addr1).joinGame(gameId, 1, handPublicKey, nullHash); // same cards
-            await pokerGame.connect(addr2).joinGame(gameId, 2, handPublicKey, nullHash); // same cards
-            await pokerGame.connect(addr3).joinGame(gameId, 3, handPublicKey, nullHash); // same cards
+            await pokerLobby.connect(addr1).joinCashGame(gameId, 1, handPublicKey, nullHash); // same cards
+            await pokerLobby.connect(addr2).joinCashGame(gameId, 2, handPublicKey, nullHash); // same cards
+            await pokerLobby.connect(addr3).joinCashGame(gameId, 3, handPublicKey, nullHash); // same cards
             initialBalance1 = await pokerGame.getChips(gameId, addr1.address);
             initialBalance2 = await pokerGame.getChips(gameId, addr2.address);
             await pokerGame.connect(owner).dealHand(gameId);

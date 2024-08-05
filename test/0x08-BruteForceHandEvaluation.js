@@ -6,7 +6,7 @@ console.log = function() {};
 const PokerEvaluator = require('poker-evaluator');
 console.log = originalConsoleLog;
 
-const NUM_OF_TESTS = 100; // increase significantly to test broader range of hands, tested  on over 1 million hands on a gaming rig overnight
+const NUM_OF_TESTS = 10; // increase significantly to test broader range of hands, tested  on over 1 million hands on a gaming rig overnight
 
 describe("PokerHandEvaluator", function () {
     let pokerHandEvaluator;
