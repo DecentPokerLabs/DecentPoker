@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 /**
  * @title PokerChips
  * @author decentpokerlabs@proton.me
- * @notice The chips used in poker games
+ * @notice Play money chips for poker games
  *   ____                      _   ____       _             
  *  |  _ \  ___  ___ ___ _ __ | |_|  _ \ ___ | | _____ _ __ 
  *  | | | |/ _ \/ __/ _ \ '_ \| __| |_| / _ \| |/ / _ \  __|
@@ -18,21 +18,12 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract PokerChips is ERC20 {
-    IERC20 public usdcToken;
 
-    constructor(address _usdcToken) ERC20("PokerChips", "PKR") {
-        usdcToken = IERC20(_usdcToken);
-    }
+    constructor() ERC20("PokerChips", "PKR") {}
 
-    function depositUSDC(uint256 amount) external {
-        require(usdcToken.transferFrom(msg.sender, address(this), amount), "USDC transfer failed");
-        _mint(msg.sender, amount);
-    }
-
-    function withdraw(uint256 amount) external {
-        require(balanceOf(msg.sender) >= amount, "Insufficient PokerChips balance");
-        _burn(msg.sender, amount);
-        require(usdcToken.transfer(msg.sender, amount), "USDC transfer failed");
+    function mint(uint256 _amount) external {
+        require (_amount < 1_000_000e6, "Cant mint more than one mil");
+        _mint(msg.sender, _amount); // Anyone can mint
     }
 
     function decimals() public view virtual override returns (uint8) {

@@ -19,11 +19,6 @@ interface IPokerHandEvaluator {
     function determineWinners(uint8[7][9] memory hands) external pure returns (bool[9] memory);
 }
 
-interface IPokerChips {
-    function transferFrom(address sender, address recipient, uint amount) external returns (bool);
-    function transfer(address recipient, uint amount) external returns (bool);
-}
-
 interface IPokerDealer {
     function createHand(uint _gid, address[] memory _players, bytes32[] memory _publicKeys) external returns (uint);
     function updateNextBlock(uint _hid) external;
@@ -31,10 +26,14 @@ interface IPokerDealer {
     function turn(uint _hid) external;
     function river(uint _hid) external;
     function close(uint _hid, bytes32[] memory _privateKeys) external returns (bool);
-    function getFlop(uint gid) external view returns (uint8, uint8, uint8);
-    function getTurn(uint gid) external view returns (uint8);
-    function getRiver(uint gid) external view returns (uint8);
+    function getFlop(uint _hid) external view returns (uint8, uint8, uint8);
+    function getTurn(uint _hid) external view returns (uint8);
+    function getRiver(uint _hid) external view returns (uint8);
     function getCards(uint _hid, bytes32 _privateKey) external view returns (uint8[7] memory);
+}
+
+interface IPokerLobby {
+    function endGame(uint _gid, address _player, uint _chips) external;
 }
 
 contract PokerGame {
@@ -63,9 +62,8 @@ contract PokerGame {
         Pot[8] pots;
         uint currentBet;
         uint lastActionBlock;
-        uint lastActionTimestamp;        
+        uint lastActionTimestamp;
         uint bigBlind;
-        bytes32 invitePublicKey;
         uint8 maxPlayers;
         uint8 dealerSeat;
         uint8 actionOnSeat;
@@ -74,8 +72,8 @@ contract PokerGame {
     }
 
     IPokerHandEvaluator public handEvaluator;
-    IPokerChips public pokerChips;
     IPokerDealer public pokerDealer;
+    IPokerLobby public pokerLobby;
 
     mapping(uint => Game) public games;
     uint gameCount;
@@ -87,40 +85,38 @@ contract PokerGame {
     event Action(uint indexed gid, address player, PlayerAction action, uint amount);
     event Winner(uint indexed gid, uint hid, address winner, uint amount);
 
-    constructor(address _handEvaluator, address _pokerChips, address _pokerDealer) {
+    constructor(address _handEvaluator, address _pokerDealer, address _pokerLobby) {
         handEvaluator = IPokerHandEvaluator(_handEvaluator);
-        pokerChips = IPokerChips(_pokerChips);
         pokerDealer = IPokerDealer(_pokerDealer);
+        pokerLobby = IPokerLobby(_pokerLobby);
     }
 
-    function createGame(uint8 _maxPlayers, uint _bigBlind, bytes32 _invitePublicKey) external returns (uint) {
+    function createGame(uint8 _maxPlayers, uint _bigBlind) external returns (uint) {
+        require(msg.sender == address(pokerLobby), "Create games through pokerLobby");
         require(_maxPlayers >= 2 && _maxPlayers <= 9, "Invalid number of players");
         require(_bigBlind >= 2, "Invalid _bigBlind value");
         gameCount++;
         Game storage newGame = games[gameCount];
         newGame.maxPlayers = _maxPlayers;
         newGame.bigBlind = _bigBlind;
-        newGame.invitePublicKey = _invitePublicKey;
         newGame.state = GameState.Waiting;
         emit GameCreated(gameCount, _maxPlayers, _bigBlind);
         return gameCount;
     }
 
-    function joinGame(uint _gid, uint8 _seatIndex, bytes32 _handPublicKey, bytes32 _invitePrivateKey) external {
+    function joinGame(uint _gid, address _player, uint8 _seatIndex, bytes32 _handPublicKey) external {
+        require(msg.sender == address(pokerLobby), "Join games through pokerLobby");
         Game storage game = games[_gid];
         require(game.state == GameState.Waiting, "Not ready");
         require(game.maxPlayers >= 2, "Game not found");
         require(_seatIndex < game.maxPlayers, "Invalid seat index");
         require(game.players[_seatIndex].addr == address(0), "Seat taken");
         for (uint8 i = 0; i < game.maxPlayers; i++) {
-            require(game.players[i].addr != msg.sender, "Already in game");
+            require(game.players[i].addr != _player, "Already in game");
         }
-        // Note this isn't robust because the private key could be found simply using a block explorer
-        require(keccak256(abi.encodePacked(_invitePrivateKey)) == game.invitePublicKey || game.invitePublicKey == 0x0, "invitePrivateKey invalid");
         uint buyIn = game.bigBlind * 100;
-        pokerChips.transferFrom(msg.sender, address(this), buyIn);
         game.players[_seatIndex] = Player({
-            addr: msg.sender,
+            addr: _player,
             chips: buyIn,
             currentBet: 0,
             hasFolded: false,
@@ -128,7 +124,12 @@ contract PokerGame {
             handPublicKey: _handPublicKey,
             handPrivateKey: 0x0
         });
-        emit PlayerJoined(_gid, msg.sender, _seatIndex);
+        emit PlayerJoined(_gid, _player, _seatIndex);
+    }
+
+    function updateBlinds(uint _gid, uint _bigBlind) external {
+        require(msg.sender == address(pokerLobby), "updateBlinds through pokerLobby");
+        games[_gid].bigBlind = _bigBlind;
     }
 
     function dealHand(uint _gid) external {
@@ -150,8 +151,8 @@ contract PokerGame {
             game.actionOnSeat = bigBlindSeat;
         }
         createPot(game);
-        postBlind(game, smallBlindSeat, game.bigBlind / 2);
-        postBlind(game, bigBlindSeat, game.bigBlind);
+        postBlind(_gid, smallBlindSeat, game.bigBlind / 2);
+        postBlind(_gid, bigBlindSeat, game.bigBlind);
         game.currentBet = game.bigBlind;
         game.lastActionBlock = block.number;
         game.lastActionTimestamp = block.timestamp;
@@ -251,6 +252,7 @@ contract PokerGame {
     function foldAndLeave(uint _gid, uint8 _seat) internal {
         Game storage game = games[_gid];
         Player storage player = game.players[_seat];
+        require(player.addr != address(0), "already left");
         player.hasFolded = true;
         player.hasActed = true;
         if (game.hid > 0) {
@@ -265,10 +267,15 @@ contract PokerGame {
                 }
             }
         }
-        // Remove player from game
-        address payoutAddress = player.addr;
+        removePlayerFromGame(_gid, _seat);
+    }
+
+    function removePlayerFromGame(uint _gid, uint8 _seat) internal {
+        Game storage game = games[_gid];
+        address payoutAddress = game.players[_seat].addr;
+        uint payoutAmount = game.players[_seat].chips;
         delete game.players[_seat];
-        pokerChips.transfer(payoutAddress, player.chips);
+        pokerLobby.endGame(_gid, payoutAddress, payoutAmount);
     }
 
     function autoFold(uint _gid) external {
@@ -416,7 +423,8 @@ contract PokerGame {
         game.currentBet = 0;
     }
 
-    function resetGame(Game storage game) internal {
+    function resetGame(uint _gid) internal {
+        Game storage game = games[_gid];
         game.state = GameState.Waiting;
         delete game.pots;
         game.currentBet = 0;
@@ -427,13 +435,17 @@ contract PokerGame {
                 player.hasFolded = false;
                 player.hasActed = false;
                 player.handPrivateKey = 0x0;
+                if (player.chips < game.bigBlind) removePlayerFromGame(_gid, i);
             }
         }
     }
 
-    function postBlind(Game storage game, uint8 _seat, uint _blindAmount) internal {
+    function postBlind(uint _gid, uint8 _seat, uint _blindAmount) internal {
+        Game storage game = games[_gid];
         Player storage player = game.players[_seat];
-        require(player.chips >= _blindAmount, "Cant post blinds"); // kick out?
+        if (player.chips < _blindAmount) {
+            removePlayerFromGame(_gid, _seat);
+        }
         player.chips -= _blindAmount;
         player.currentBet = _blindAmount;
         addToPots(game, _seat, _blindAmount, true);
@@ -530,7 +542,7 @@ contract PokerGame {
                 }
             }
         }
-        resetGame(game);
+        resetGame(_gid);
     }
 
     // Public View functions
