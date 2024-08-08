@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import 'hardhat/console.sol';
+
 /**
  * @title PokerGame
  * @author decentpokerlabs@proton.me
@@ -519,8 +521,6 @@ contract PokerGame {
         for (uint potIndex = 0; potIndex < 8; potIndex++) {
             Pot storage pot = game.pots[potIndex];
             if (pot.amount == 0) break;
-            //console.log("potIndex: %s", potIndex);
-            //console.log("pot.amount: %s", pot.amount);
             uint8[7][9] memory hands;
             for (uint8 i = 0; i < 9; i++) {
                 Player storage player = game.players[i];
@@ -533,7 +533,6 @@ contract PokerGame {
             for (uint8 i = 0; i < 9; i++) {
                 if (winners[i] == true) winnerCount += 1;
             }
-            //console.log("winnerCount: %s", winnerCount);
             uint winnerShare = pot.amount / winnerCount;
             for (uint8 i = 0; i < 9; i++) {
                 if (winners[i] == true && game.players[i].addr != address(0)) {
@@ -566,13 +565,11 @@ contract PokerGame {
     function getAction(uint _gid) public view returns (address) {
         return games[_gid].players[games[_gid].actionOnSeat].addr;
     }
-
+/*
     function getChips(uint _gid, address _player) public view returns (uint) {
         uint8 seat = getSeat(_gid, _player);
         return games[_gid].players[seat].chips;
     }
-
-/*
 
     function getNextActiveSeat(uint _gid, uint8 _startSeat) public view returns (uint8) {
         return getNextActiveSeat(games[_gid], _startSeat);

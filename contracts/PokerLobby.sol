@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import 'hardhat/console.sol';
+
 /**
  * @title PokerLobby
  * @author decentpokerlabs@proton.me
@@ -169,11 +171,14 @@ contract PokerLobby {
         } else {
             significantPart = 10;
         }
-        return significantPart * (10 ** exponent);
+        uint newBlind = significantPart * (10 ** exponent);
+        if (newBlind == _currentBigBlind) newBlind = newBlind * 15 / 10;
+        return newBlind;
     }
 
     function updateBlinds(uint _gid) external {
         SitAndGo storage game = sitAndGos[_gid];
+        require(game.lastBlindUpdate != 0, "Game not started");
         require (block.timestamp > game.lastBlindUpdate + game.blindDuration, "Cant update blinds yet");
         game.bigBlind = findNextBlind(game.bigBlind);
         game.lastBlindUpdate = block.timestamp;
@@ -192,6 +197,7 @@ contract PokerLobby {
                 require(game.position[i] != _player, "Already ended game");
                 if (game.position[i] == address(0)) {
                     game.position[i] = _player;
+                    if (i != game.maxPlayers -1) break;
                 }
                 uint prizePool = game.buyIn * game.maxPlayers;
                 if (i == game.maxPlayers -1 && game.maxPlayers == 9) {
