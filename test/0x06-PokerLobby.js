@@ -9,7 +9,7 @@ describe("PokerLobby", function () {
   let players;
 
   beforeEach(async function () {
-    [owner, addr1, addr2, addr3, addr4, addr5, addr6, addr7, addr8, addr9, addr10] = await ethers.getSigners();
+    [owner, addr1, addr2, addr3, addr4, addr5, addr6, addr7, addr8, addr9, addr10, addr11] = await ethers.getSigners();
     players = [addr1, addr2, addr3, addr4, addr5, addr6, addr7, addr8, addr9, addr10];
 
     const HandEvaluator = await ethers.getContractFactory("PokerHandEvaluator");
@@ -424,6 +424,184 @@ describe("PokerLobby", function () {
 
       // Check token transfer
       expect(await pokerChips.balanceOf(await addr1.getAddress())).to.equal(initialBalance);
+    });
+  });
+
+  describe("PokerLobby Additional Tests", function () {
+    let pokerLobby;
+    let pokerGame;
+    let pokerChips;
+    let owner, addr1, addr2, addr3, addr4, addr5, addr6, addr7, addr8, addr9, addr10;
+    let players;
+  
+    beforeEach(async function () {
+      [owner, addr1, addr2, addr3, addr4, addr5, addr6, addr7, addr8, addr9, addr10] = await ethers.getSigners();
+      players = [addr1, addr2, addr3, addr4, addr5, addr6, addr7, addr8, addr9, addr10];
+  
+      const HandEvaluator = await ethers.getContractFactory("PokerHandEvaluator");
+      handEvaluator = await HandEvaluator.deploy();
+  
+      const PokerChips = await ethers.getContractFactory("PokerChips");
+      pokerChips = await PokerChips.deploy();
+  
+      const PokerDealer = await ethers.getContractFactory("PokerDealer");
+      pokerDealer = await PokerDealer.deploy();
+  
+      const PokerLobby = await ethers.getContractFactory("PokerLobby");
+      pokerLobby = await PokerLobby.deploy();
+  
+      const PokerGame = await ethers.getContractFactory("PokerGame");
+      pokerGame = await PokerGame.deploy(
+        await handEvaluator.getAddress(),
+        await pokerDealer.getAddress(),
+        await pokerLobby.getAddress(),
+      );
+  
+      await pokerLobby.setPokerGameAddress(await pokerGame.getAddress());
+  
+      for (const addr of players) {
+        const mil = ethers.parseUnits("999999", 6);
+        await pokerChips.connect(addr).mint(mil);
+      }
+    });
+  
+    describe("Cash Game Creation and Joining", function () {
+      it("should not allow creating a cash game with invalid player count", async function () {
+        const invalidMaxPlayers = 1; // Assuming minimum is 2
+        const bigBlind = ethers.parseUnits("2", 6);
+        const invitePublicKey = ethers.randomBytes(32);
+        await expect(pokerLobby.createCashGame(invalidMaxPlayers, bigBlind, invitePublicKey, await pokerChips.getAddress()))
+          .to.be.revertedWith("incorrect players");
+      });
+  
+      it("should not allow joining a cash game with insufficient balance", async function () {
+        const maxPlayers = 6;
+        const bigBlind = ethers.parseUnits("2", 6);
+        const invitePrivateKey = ethers.encodeBytes32String("secret1a");
+        const invitePublicKey = ethers.keccak256(invitePrivateKey);
+        await pokerLobby.createCashGame(maxPlayers, bigBlind, invitePublicKey, await pokerChips.getAddress());
+        await expect(pokerLobby.connect(addr11).joinCashGame(1, 0, ethers.randomBytes(32), invitePrivateKey))
+          .to.be.reverted;
+      });
+  
+      it("should not allow joining a cash game twice", async function () {
+        const maxPlayers = 6;
+        const bigBlind = ethers.parseUnits("2", 6);
+        const invitePrivateKey = ethers.encodeBytes32String("secret1a");
+        const invitePublicKey = ethers.keccak256(invitePrivateKey);
+        await pokerLobby.createCashGame(maxPlayers, bigBlind, invitePublicKey, await pokerChips.getAddress());
+  
+        const buyIn = bigBlind * 100n;
+        await pokerChips.connect(addr1).approve(await pokerLobby.getAddress(), buyIn);
+        await pokerLobby.connect(addr1).joinCashGame(1, 0, ethers.randomBytes(32), invitePrivateKey);
+  
+        await expect(pokerLobby.connect(addr1).joinCashGame(1, 1, ethers.randomBytes(32), invitePrivateKey))
+          .to.be.reverted;
+      });
+    });
+  
+    describe("Sit and Go Creation and Registration", function () {
+      it("should not allow creating a Sit and Go with invalid blind duration", async function () {
+        const maxPlayers = 6;
+        const bigBlind = ethers.parseUnits("20", 6);
+        const invalidBlindDuration = 0;
+        const startingChips = ethers.parseUnits("10000", 6);
+        const invitePublicKey = ethers.randomBytes(32);
+        const buyIn = ethers.parseUnits("100", 6);
+  
+        await expect(pokerLobby.createSitAndGo(maxPlayers, bigBlind, invalidBlindDuration, startingChips, invitePublicKey, buyIn, await pokerChips.getAddress()))
+          .to.be.revertedWith("Invalid blind duration");
+      });
+  
+      it("should not allow registering for a Sit and Go twice", async function () {
+        const maxPlayers = 6;
+        const bigBlind = ethers.parseUnits("20", 6);
+        const blindDuration = 900;
+        const startingChips = ethers.parseUnits("10000", 6);
+        const invitePrivateKey = ethers.encodeBytes32String("secret1a");
+        const invitePublicKey = ethers.keccak256(invitePrivateKey);
+        const buyIn = ethers.parseUnits("100", 6);
+  
+        await pokerLobby.createSitAndGo(maxPlayers, bigBlind, blindDuration, startingChips, invitePublicKey, buyIn, await pokerChips.getAddress());
+  
+        await pokerChips.connect(addr1).approve(await pokerLobby.getAddress(), buyIn);
+        await pokerLobby.connect(addr1).registerSitAndGo(1, 0, ethers.randomBytes(32), invitePrivateKey);
+  
+        await expect(pokerLobby.connect(addr1).registerSitAndGo(1, 1, ethers.randomBytes(32), invitePrivateKey))
+          .to.be.reverted;
+      });
+  
+    });
+  
+    describe("Blind Updates", function () {
+      it("should correctly update blinds multiple times", async function () {
+        const maxPlayers = 6;
+        const bigBlind = ethers.parseUnits("20", 6);
+        const blindDuration = 900;
+        const startingChips = ethers.parseUnits("10000", 6);
+        const invitePrivateKey = ethers.encodeBytes32String("secret1a");
+        const invitePublicKey = ethers.keccak256(invitePrivateKey);
+        const buyIn = ethers.parseUnits("100", 6);
+  
+        await pokerLobby.createSitAndGo(maxPlayers, bigBlind, blindDuration, startingChips, invitePublicKey, buyIn, await pokerChips.getAddress());
+  
+        // Register all players
+        for (let i = 0; i < maxPlayers; i++) {
+          const player = players[i];
+          await pokerChips.connect(player).approve(await pokerLobby.getAddress(), buyIn);
+          await pokerLobby.connect(player).registerSitAndGo(1, i, ethers.randomBytes(32), invitePrivateKey);
+        }
+  
+        // Update blinds multiple times
+        for (let i = 0; i < 5; i++) {
+          await ethers.provider.send("evm_increaseTime", [blindDuration + 1]);
+          await ethers.provider.send("evm_mine");
+          await pokerLobby.updateBlinds(1);
+        }
+  
+        const game = await pokerLobby.sitAndGos(1);
+        expect(game.bigBlind).to.equal(ethers.parseUnits("200", 6));
+      });
+    });
+  
+    describe("Edge Cases", function () {
+      it("should handle a full cash game correctly", async function () {
+        const maxPlayers = 9;
+        const bigBlind = ethers.parseUnits("2", 6);
+        const invitePrivateKey = ethers.encodeBytes32String("secret1a");
+        const invitePublicKey = ethers.keccak256(invitePrivateKey);
+        await pokerLobby.createCashGame(maxPlayers, bigBlind, invitePublicKey, await pokerChips.getAddress());
+  
+        const buyIn = bigBlind * 100n;
+  
+        for (let i = 0; i < maxPlayers; i++) {
+          const player = players[i];
+          await pokerChips.connect(player).approve(await pokerLobby.getAddress(), buyIn);
+          await pokerLobby.connect(player).joinCashGame(1, i, ethers.randomBytes(32), invitePrivateKey);
+        }
+  
+        // Try to join with the 10th player
+        await pokerChips.connect(addr10).approve(await pokerLobby.getAddress(), buyIn);
+        await expect(pokerLobby.connect(addr10).joinCashGame(1, 9, ethers.randomBytes(32), invitePrivateKey))
+          .to.be.revertedWith("Invalid seat index");
+      });
+  
+      it("should not allow updating blinds in a cash game", async function () {
+        const maxPlayers = 6;
+        const bigBlind = ethers.parseUnits("2", 6);
+        const invitePrivateKey = ethers.encodeBytes32String("secret1a");
+        const invitePublicKey = ethers.keccak256(invitePrivateKey);
+        await pokerLobby.createCashGame(maxPlayers, bigBlind, invitePublicKey, await pokerChips.getAddress());
+        pokerLobby.connect(addr1).joinCashGame(1, 9, ethers.randomBytes(32), invitePrivateKey)
+        pokerLobby.connect(addr2).joinCashGame(1, 9, ethers.randomBytes(32), invitePrivateKey)
+        await expect(pokerLobby.updateBlinds(1))
+          .to.be.revertedWith("Game not started");
+      });
+  
+      it("should not allow setting PokerGame address twice", async function () {
+        await expect(pokerLobby.setPokerGameAddress(await pokerGame.getAddress()))
+          .to.be.revertedWith("Poker game already set");
+      });
     });
   });
 });
