@@ -79,6 +79,8 @@ contract PokerLobby {
         bytes32 _invitePublicKey,
         address _token
     ) external returns (uint) {
+        require(_maxPlayers >= 2 && _maxPlayers <= 9, "incorrect players");
+        require(_bigBlind > 0, "blinds too low");
         uint gid = pokerGame.createGame(_maxPlayers, _bigBlind);
         CashGame storage game = cashGames[gid];
         game.gid = gid;
@@ -100,6 +102,8 @@ contract PokerLobby {
         uint _buyIn,
         address _token
     ) external returns (uint) {
+        require(_blindDuration > 0, "Invalid blind duration");
+        require(_bigBlind > 0, "blinds too low");
         uint gid = pokerGame.createGame(_maxPlayers, _bigBlind);
         SitAndGo storage game = sitAndGos[gid];
         game.gid = gid;
