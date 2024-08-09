@@ -1,6 +1,8 @@
 # DecentPoker
 #### The Open Decentralized Poker Project
 
+https://decentpoker.org
+
 ## Table of Contents
 - [Introduction](#introduction)
 - [Project Overview](#project-overview)
@@ -61,26 +63,21 @@ A decentralized poker game is a technically challenging project due to the compu
 
 Deployed to Ethereum Sepolia testnet
 
-MockUSDC deployed to:
-0x180E80d218878Ba569Ca3463661E157Dc47d016F
+Deploying contracts with the account: 0x123e710c69b6806ef32Cf52e49dCC5EEEc368a22
 
-PokerChips deployed to:
-0x14bb1E229725be421e397443dF7b74ffc433C52c
+PokerChips deployed to: 0x4BE1A8877DD916e4cdCa65493E2Ee0D0Bf5533Bf
 
-PokerHandEvaluator deployed to:
-0x1D1ed5505c2b401edC44F436712577489D1B670D
+PokerHandEvaluator deployed to: 0x883ffe3d475516eAB8973fA26908C92cD996Ac72
 
-PokerDealer deployed to:
-0xF20EFa959474eAcDA038a735b5b2bF052E0d0979
+PokerDealer deployed to: 0x17Df61C33fDc220728F33665FbdF13e4B6955Eda
 
-PokerGame deployed to:
-0xbeCbC2bA2afB8c69D00DaA9d860366bb539F0919
+PokerLobby deployed to: 0x396014ACa4deF978F8D31d76A3422F59D0c8Df93
+
+PokerGame deployed to: 0x6D98f3961607C5160e75E4df0C982F8FBF7ed00b
 
 Before playing the game on testnet you'll need to mint and approve some tokens.
-   await usdc.mint(deployer.address, 1000e6);
-   await usdc.approve(await pokerChips.getAddress(), 1000e6);
-   await pokerChips.depositUSDC(1000e6);
-   await pokerChips.approve(await pokerGame.getAddress(), 1000e6);
+await pokerChips.mint(100000e6);
+await pokerChips.approve(await pokerLobby.getAddress(), 100000e6);
 
 ## Getting Started
 
