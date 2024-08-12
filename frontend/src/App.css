@@ -1,0 +1,43 @@
+body {
+  font-family: Inter, Arial, sans-serif;
+  color: #FFF;
+  margin: 0 auto;
+  background: #000;
+}
+.container {
+  width: 90%;
+  margin: auto;
+  padding: 20px 0;
+}
+header, section, footer {
+  padding: 60px 0;
+  text-align: center;
+}
+button {
+  font-size: 16px;
+  line-height: 22px;
+  padding: 12px 29px;
+  color: #FFF;
+  vertical-align: middle;
+  background: linear-gradient(90deg, #222, #000) padding-box, linear-gradient(48.23deg, #22B879 20%, #7441D5 80%) border-box;
+  border-width: 2px;
+  border-style: solid;
+  border-color: transparent;
+  border-radius: 15px;
+  cursor: pointer;
+  letter-spacing: 1px;
+  margin: 0px 10px;
+}
+button:hover {
+  background: linear-gradient(90deg, #262626, #060606) padding-box, linear-gradient(48.23deg, #22B879 40%, #7441D5 60%) border-box;
+  
+}
+a {
+  color: #EEE;
+}
+a:hover {
+  color: #FFF;
+}
+.grey {
+  color: #888;
+}

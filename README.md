@@ -61,23 +61,22 @@ A decentralized poker game is a technically challenging project due to the compu
 
 ### Testnet
 
-Deployed to Ethereum Sepolia testnet
+Deployed to Ethereum Sepolia testnet & Base Sepolia testnet:
 
-Deploying contracts with the account: 0x123e710c69b6806ef32Cf52e49dCC5EEEc368a22
+#### Ethereum Sepolia Testnet
+PokerChips deployed to: 0xF15Dc43dCf1e0f93c7873B0DB79CC9Bec771a950
+PokerHandEvaluator deployed to: 0x0b9c45A9f3183d162AAf262Ce84B39C9cb819723
+PokerDealer deployed to: 0x7608ac91726305c9d08Bec80572AcA5937c02Bf8
+PokerLobby deployed to: 0x9aBe6628710CA195b959e128d9e3712DB7dC953a
+PokerGame deployed to: 0xbEab32fC4df8C9Cf0C45F29b31212855C4809e9D
 
-PokerChips deployed to: 0x4BE1A8877DD916e4cdCa65493E2Ee0D0Bf5533Bf
+#### Base Sepolia Testnet
+PokerChips deployed to: 0x484Ec30Feff505b545Ed7b905bc25a6a40589181
+PokerHandEvaluator deployed to: 0x0246B582B64C34a5a7a28c3B7b1637cF5D4598a7
+PokerDealer deployed to: 0x06206d5F1929a7BC489851f697AAF12e6E140b81
+PokerLobby deployed to: 0x094251c982cb00B1b1E1707D61553E304289D4D8
+PokerGame deployed to: 0x365Cb0886c53695e2578295CE69B72e20Dd50A54
 
-PokerHandEvaluator deployed to: 0x883ffe3d475516eAB8973fA26908C92cD996Ac72
-
-PokerDealer deployed to: 0x17Df61C33fDc220728F33665FbdF13e4B6955Eda
-
-PokerLobby deployed to: 0x396014ACa4deF978F8D31d76A3422F59D0c8Df93
-
-PokerGame deployed to: 0x6D98f3961607C5160e75E4df0C982F8FBF7ed00b
-
-Before playing the game on testnet you'll need to mint and approve some tokens.
-await pokerChips.mint(100000e6);
-await pokerChips.approve(await pokerLobby.getAddress(), 100000e6);
 
 ## Getting Started
 

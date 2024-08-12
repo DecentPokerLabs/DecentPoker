@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DecentPoker</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display&family=Inter&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: Inter, Arial, sans-serif;
+            color: #FFF;
+            margin: 0 auto;
+            background: #000;
+        }
+        .container {
+            width: 90%;
+            margin: auto;
+            padding: 20px 0;
+        }
+        header, section, footer {
+            padding: 60px 0;
+            text-align: center;
+        }
+        button {
+            font-size: 16px;
+            line-height: 22px;
+            padding: 12px 29px;
+            color: #FFF;
+            vertical-align: middle;
+            background: linear-gradient(90deg, #222, #000) padding-box, linear-gradient(48.23deg, #22B879 20%, #7441D5 80%) border-box;
+            border-width: 2px;
+            border-style: solid;
+            border-color: transparent;
+            border-radius: 15px;
+            cursor: pointer;
+            letter-spacing: 1px;
+            margin: 0px 10px;
+        }
+        button:hover {
+            background: linear-gradient(90deg, #262626, #060606) padding-box, linear-gradient(48.23deg, #22B879 40%, #7441D5 60%) border-box;
+            
+        }
+        a {
+            color: #EEE;
+        }
+        a:hover {
+            color: #FFF;
+        }
+        .grey {
+            color: #888;
+        }
+        .menu {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            background: linear-gradient(rgba(0, 0, 0, 1), rgba(0, 0, 0, 0.4));
+            padding: 10px 0;
+            text-align: center;
+            z-index: 1000;
+        }
+
+        .menu a {
+            color: #EEE;
+            text-decoration: none;
+            margin: 0 10px;
+            font-size: 14px;
+            font-family: "Playfair Display", 'Times New Roman', Times, serif;
+        }
+
+        .menu a:hover {
+            text-decoration: underline;
+        }
+        .hero {
+            position: relative;
+            background: linear-gradient(rgba(0, 0, 0, 1), rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 1)), url('img/hero.webp') no-repeat center center/cover;
+            background-blend-mode: darken;
+            padding: 150px 20px;
+            color: #fff; /* Ensure text remains readable */
+        }
+        .rotate-notice .logo {
+            font-family: "Playfair Display", 'Times New Roman', Times, serif;
+            font-size: 25px;
+            margin-top: -50px;
+        }
+        .hero .logo {
+            font-family: "Playfair Display", 'Times New Roman', Times, serif;
+            font-size: 100px;
+        }
+        .hero h1 {
+            font-size: 32px;
+            margin: 0 0 10px;
+            background: linear-gradient(90deg, #22B879 30%, #6C63FF 70%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .hero p {
+            font-size: 22px;
+            letter-spacing: 2px;
+            margin: 0 0 20px;
+            color: #888;
+        }
+        .hero .play-now {
+            padding: 15px 30px;
+            margin: 60px auto 10px auto;
+            font-size: 18px;
+            width: 180px;
+        }
+        .hero .no-sign-up {
+            font-size: 0.7em;
+        }
+        h2 {
+            font-family: "Playfair Display", 'Times New Roman', Times, serif;
+            font-size: 36px;
+            margin-bottom: 36px;
+            background: linear-gradient(90deg, #22B879 40%, #6C63FF 60%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: 2px;
+        }
+        h3 {
+            font-size: 28px;
+            margin-bottom: 24px;
+            color: #22B879;
+            letter-spacing: 1px;
+        }
+        h4 {
+            font-size: 20px;
+            margin-bottom: 20px;
+            color: #22B879;
+            letter-spacing: 1px;
+        }
+        section p {
+            font-size: 18px;
+            margin-bottom: 20px;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        #how-it-works {
+            background: linear-gradient(rgba(0, 0, 0, 1), rgba(0, 0, 0, 0.8)), url('img/table.webp') no-repeat center center/cover;
+            background-blend-mode: darken;
+        }
+        #how-it-works .svg-icon {
+            max-width: 100px;
+            opacity: 0.3;
+            padding: 25px;
+        }
+        .table-image {
+            max-width: 800px;
+            margin: 0px auto 20px auto;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+            max-width: 800px;
+            margin: 0 auto 30px;
+        }
+        .grid-item {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: row;
+            padding: 20px;
+            text-align: right;
+        }
+        .grid-item:nth-child(2) {
+            text-align: left;
+        }
+        .grid-item p {
+            font-size: 14px;
+            color: #AAA;
+        }
+        .features, .testimonials {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-around;
+        }
+        .features .feature {
+            width: 45%;
+            margin: 10px 0;
+            position: relative;
+            background: linear-gradient(rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 1)), url('img/dots.webp') no-repeat center center/cover;
+            background-blend-mode: darken;
+            border-radius: 25px;
+            padding: 20px;
+        }
+        .feature h3, .testimonial h3 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        #testimonials {
+            background: linear-gradient(rgba(0, 0, 0, 1), rgba(0, 0, 0, 0.8),  rgba(0, 0, 0, 1)), url('img/girls.webp') no-repeat center center/cover;
+            background-blend-mode: darken;
+        }
+        .testimonials .testimonial {
+            width: 70%;
+            margin: 10px 0;
+            position: relative;
+            background: #060606CC;
+            border-radius: 25px;
+            padding: 20px;
+            text-align: left;
+        }
+
+        .testimonial img {
+            width: 180px;
+        }
+
+        .security-item {
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px 60px;
+            border: 1px solid #22B879;
+            background: linear-gradient(rgba(0, 0, 0, 1), rgba(0, 0, 0, 0.8)), url('img/dots.webp') no-repeat center center/cover;
+            background-blend-mode: darken;
+            border-radius: 25px;
+        }
+
+        .security-item p {
+            text-align: left;
+            font-size: 14px; 
+        }
+
+        footer a {
+            font-size: 0.9em;
+            color: #6C63FF;
+            text-decoration: none;
+            margin: 0 10px;
+        }
+
+        @media screen and (orientation: portrait) {
+            .rotate-notice {
+                display: block;
+                width: 100%;
+                height: 100vh;
+                background: #000;
+                color: #fff;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                position: absolute;
+                top: 0;
+                left: 0;
+                z-index: 9999;
+                text-align: center;
+            }
+
+            .content {
+                display: none;
+            }
+        }
+
+        @media screen and (orientation: landscape) {
+            .rotate-notice {
+                display: none;
+            }
+
+            .content {
+                display: block;
+            }
+        }
+
+        @media screen and (orientation: landscape) and (max-height: 500px) {
+            .hero {
+                padding: 30px;
+            }
+            .hero .play-now {
+                margin: 10px auto;
+            }
+            #how-it-works p {
+                font-size: 0.9em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="rotate-notice">
+        <div>
+            <div class="logo">Decent<span class="grey">Poker</span></div>
+            <p>Please rotate your device to landscape mode</p>
+        </div>
+    </div>
+      
+    <div class="content">
+        <div class="menu">
+            <a href="javscript:void(0)" class="play-now">PLAY</a> <span class="grey">|</span>
+            <a href="https://decentpoker.substack.com">NEWS</a> <span class="grey">|</span>
+            <a href="https://decentpoker.org/DecentPoker-Whitepaper.pdf">WHITEPAPER</a> <span class="grey">|</span>
+            <a href="https://github.com/DecentPokerLabs/DecentPoker">GITHUB</a> <span class="grey">|</span>
+            <a href="https://x.com/DecentPokerLabs">@DECENTPOKERLABS</a> <span class="grey">|</span>
+            <a href="mailto:decentpokerlabs@proton.me">CONTACT</a>
+            
+        </div>
+
+        <header class="hero">
+            <div class="logo">Decent<span class="grey">Poker</span></div>
+            <h1>The Open Decentralized Poker Project</h1>
+            <p>Rake Free Texas Hold'em</p>
+            <button class="play-now">PLAY NOW</button>
+            <p class="no-sign-up">No Sign Up Required</p>
+        </header>
+    
+        <section id="how-it-works" class="container">
+            <h2>How It Works</h2>
+            <p>Decentralization, a fancy term which just means you are playing on a shared global computer</p>
+            <p>There is no online casino, no one to charge you fees, no one to misuse your personal data</p>
+            <p>You play against other players who connect to the peer to peer network like you</p>
+            </p>
+            <div class="grid">
+                <div class="grid-item">
+                    <img src="img/icons/poker.svg" class="svg-icon" alt="Permissionless Poker">
+                    <div class="grid-text">
+                        <h3>Permissionless Poker</h3>
+                        <p>First fully decentralized poker game with no third party dealer</p>
+                        <p>Decent poker is a peer to peer trustless game. This web page is hosted on Github and the backend runs on a shared Ethereum virtual machine decentralized network</p>
+                    </div>
+                </div>
+                <div class="grid-item">
+                    <div class="grid-text">
+                        <h3>Community Built</h3>
+                        <p>Built by poker players for poker players and shared with the community</p>
+                        <p>The full code base is open source for transparency. Don't trust, verify you are playing a fair game</p>
+                    </div>
+                    <img src="img/icons/cube.svg" class="svg-icon" alt="Community Built">
+                    
+                </div>
+                <div class="grid-item">
+                    <img src="img/icons/coins.svg" class="svg-icon" alt="Rake Free">
+                    <div class="grid-text">
+                        <h3>Rake Free</h3>
+                        <p>Rake free gameplay allowing players to keep 100% of their winnings</p>
+                        <p>Legacy poker sites charge up to 5% rake on every hand. DecentPoker is rake free, with no fees, no hidden charges</p>
+                    </div>
+                </div>
+            </div>
+            <button class="read-docs">DOCUMENTATION</button> <button class="play-now">PLAY NOW</button>
+        </section>
+    
+        <section id="game-features" class="container">
+            <h2>Get Started - Easy Onboarding</h2>
+            <div class="features">
+                <div class="feature">
+                    <h3>Get Some Crypto</h3>
+                    <p>Get some USDC on <a href="https://coinbase.com" target="_blank">Coinbase</a> and fund your account. Withdraw funds at any time. Maintain complete control over your digital wallet.</p>
+                </div>
+                <div class="feature">
+                    <h3>Join Your Game</h3>
+                    <p>Join a game from the lobby at stakes you are comfortable playing or create your own private home game and invite friends.</p>
+                </div>
+            </div>
+        </section>
+    
+        <section id="testimonials" class="container">
+            <h2>Be Part Of</h2>
+            <p>The worlds first fully decentralized peer to peer poker community.</p>
+            <div class="testimonials grid">
+                <div class="testimonial grid-item">
+                    <img src="img/testimonial1.webp" alt="Testimonial">
+                    <p>"DecentPoker has completely revolutionized how we think about poker. The house always wins, except when there is no house. It's the only choice for any serious player"</p>
+                </div>
+                <div class="testimonial grid-item">
+                    <p>"Joining the community has been fantastic, providing both security and a social, engaging environment. I highly recommend it to anyone looking for an exciting poker experience"</p>
+                    <img src="img/testimonial2.webp" alt="Testimonial">
+                </div>
+            </div>
+            <button class="play-now">JOIN IN TODAY</button>
+            <p>⭐⭐⭐⭐⭐</p>
+        </section>
+    
+        <section id="security-fairness" class="container">
+            <h2>Security and Fairness</h2>
+            <h4>Ensuring a Secure and Trustworthy Poker Experience</h4>
+            <p>At DecentPoker, security and fairness are our top priorities. We understand the importance of creating a safe and reliable environment for our players, and we are committed to delivering a platform that you can trust.</p>
+        
+            <div class="security-item">
+                <h4>Decentralized Architecture</h4>
+                <p>Our game is built on a fully decentralized architecture. Unlike traditional online poker platforms that rely on centralized servers, DecentPoker leverages blockchain technology to ensure that no single party has control over the game. This eliminates the risk of central points of failure and enhances the overall security of our platform.</p>
+            </div>
+        
+            <div class="security-item">
+                <h4>Transparent and Verifiable Smart Contracts</h4>
+                <p>All game logic and transactions are handled by smart contracts, which are transparent and open-source. These contracts have been rigorously tested through extensive unit and integration tests to ensure their reliability and security. You can review our smart contracts and unit tests on our <a href="https://github.com/DecentPokerLabs/DecentPoker/" target="_blank">GitHub repository</a>. By making our code open-source, we invite the community to verify and audit our contracts, fostering trust and transparency.</p>
+            </div>
+        
+            <div class="security-item">
+                <h4>Trustless Card Dealing</h4>
+                <p>One of the key innovations of DecentPoker is our trustless card dealing mechanism. Traditional online poker platforms rely on a centralized dealer, which can be a point of manipulation and unfair play. At DecentPoker, cards are dealt using cryptographic commitments and blockhashes, ensuring randomness and fairness without the need for a third-party dealer. Each player deals from their own deck, and shared community cards are generated in a verifiable and tamper-proof manner.</p>
+            </div>
+
+            <h4>Join Us in Creating a Fair Poker Ecosystem</h4>
+            <p>DecentPoker is dedicated to revolutionizing the online poker landscape by prioritizing security and fairness. We believe that a transparent, decentralized, and community-driven approach is the key to building a trustworthy platform. Join us on this journey and experience poker the way it was meant to be played.</p>
+            <button class="play-now">PLAY NOW</button>
+        </section>
+        
+    
+        <section id="blog-news" class="container">
+            <h2>Newsletter</h2>
+            <p>Stay updated with the latest features, events, and company news.</p>
+            <iframe src="https://decentpoker.substack.com/embed" width="480" height="320" style="border:1px solid #EEE; background:white;" frameborder="0" scrolling="no"></iframe>              
+            <p>Read educational content about poker strategies, blockchain technology, and decentralized gaming.</p>
+            <a href="https://decentpoker.substack.com" target="_blank">https://decentpoker.substack.com</a>
+        </section>
+    
+        <footer class="container">
+            <a href="https://decentpoker.substack.com">News</a> <span class="grey">|</span>
+            <a href="https://decentpoker.org/learn">How To Play</a> <span class="grey">|</span>
+            <a href="https://github.com/DecentPokerLabs/DecentPoker">Github</a> <span class="grey">|</span>
+            <a href="https://decentpoker.org/DecentPoker-Whitepaper.pdf">Whitepaper</a> <span class="grey">|</span>
+            <a href="https://github.com/DecentPokerLabs/DecentPoker">Docs</a> <span class="grey">|</span>
+            <a href="https://x.com/DecentPokerLabs">@DecentPokerLabs</a> <span class="grey">|</span>
+            <a href="mailto:decentpokerlabs@proton.me">Contact</a> <span class="grey">|</span>
+            <a href="https://decentpoker.org/DecentPoker-Legal.pdf">Legal</a>
+            <p>DecentPoker is a community built project,<a href="https://github.com/DecentPokerLabs/DecentPoker">get involved?</a></p>
+            <p>∞</p>
+        </footer>
+    </div>
+    <script type="module">
+        document.querySelectorAll('.play-now').forEach(element => {
+            element.addEventListener('click', () => {
+                alert('Coming Soon!');
+            });
+        });
+        document.querySelectorAll('.read-docs').forEach(element => {
+            element.addEventListener('click', () => {
+                window.location.href = 'https://decentpoker.org/DecentPoker-Whitepaper.pdf';
+            });
+        });
+    </script>
+</body>
+</html>

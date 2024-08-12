@@ -1,0 +1,9 @@
+node_modules
+lib
+SolidStart.js
+.env
+cache
+artifacts
+out
+cache_forge
+frontend/node_modules

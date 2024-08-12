@@ -74,17 +74,17 @@ describe("PokerGame.sol", function () {
     describe("Game Creation", function () {
         it("Should fail to create a game with max players > 10", async function () {
             await expect(pokerLobby.createCashGame(11, 2, nullHash, await pokerChips.getAddress()))
-                .to.be.revertedWith("Invalid number of players");
+                .to.be.revertedWith("incorrect players");
         });
 
         it("Should fail to create a game with max players < 2", async function () {
             await expect(pokerLobby.createCashGame(1, 2, nullHash, await pokerChips.getAddress()))
-                .to.be.revertedWith("Invalid number of players");
+                .to.be.revertedWith("incorrect players");
         });
 
         it("Should fail to create a game with big blind = 0", async function () {
             await expect(pokerLobby.createCashGame(6, 0, nullHash, await pokerChips.getAddress()))
-                .to.be.revertedWith("Invalid _bigBlind value");
+                .to.be.revertedWith("blinds too low");
         });
     });
 
@@ -144,17 +144,18 @@ describe("PokerGame.sol", function () {
             await pokerLobby.connect(addr3).joinCashGame(gameId, 5, handPublicKey, nullHash);
             await pokerLobby.connect(addr4).joinCashGame(gameId, 2, handPublicKey, nullHash);
             await pokerGame.connect(addr1).dealHand(gameId);
-            const dealer = await pokerGame.getDealer(gameId);
-            expect(dealer).to.equal(addr1.address);
+            const gameObj = await pokerGame.games(gameId);
+            const dealer = gameObj.dealerSeat;
+            expect(dealer).to.equal(1);
             await pokerGame.connect(addr3).playerAction(gameId, 0, 0); // Fold
             await pokerGame.connect(addr1).playerAction(gameId, 0, 0); // Fold
             await pokerGame.connect(addr4).playerAction(gameId, 0, 0); // Fold
-            const game = await pokerGame.games(gameId);
-            expect(game.state).to.equal(5); // showdown
             await pokerGame.connect(addr2).revealHand(gameId, handPrivateKey, ethers.randomBytes(32));
             await pokerGame.connect(addr1).dealHand(gameId);
-            const dealer2 = await pokerGame.getDealer(gameId);
-            expect(dealer2).to.equal(addr4.address);
+            const game = await pokerGame.games(gameId);
+            expect(game.state).to.equal(1); // preflop
+            const dealer2 = game.dealerSeat;
+            expect(dealer2).to.equal(2);
         });
 
         it("Should allow setup and joining of a private game", async function () {
@@ -168,8 +169,8 @@ describe("PokerGame.sol", function () {
             await pokerLobby.connect(addr1).joinCashGame(gameId, 1, handPublicKey, invitePrivateKey);
             await pokerLobby.connect(addr2).joinCashGame(gameId, 3, handPublicKey, invitePrivateKey);
             await pokerGame.connect(addr1).dealHand(gameId);
-            const dealer = await pokerGame.getDealer(gameId);
-            expect(dealer).to.equal(addr1.address);
+            const game = await pokerGame.games(gameId);
+            expect(game.dealerSeat).to.equal(1);
         });
 
         it("Should reject a bad invite code", async function () {
@@ -226,8 +227,10 @@ describe("PokerGame.sol", function () {
         });
 
         it("Should simulate heads up play", async function () {
-            initialBalance1 = await pokerGame.getChips(gameId,addr1.address);
-            initialBalance2 = await pokerGame.getChips(gameId,addr1.address);
+            let player1 = await pokerGame.getPlayer(gameId, 1);
+            let player2 = await pokerGame.getPlayer(gameId, 3);
+            initialBalance1 = player1.chips;
+            initialBalance2 = player2.chips;
             const handPrivateKey1 = ethers.encodeBytes32String("secret1");
             const handPublicKey1 = ethers.keccak256(handPrivateKey1);
             const handPrivateKey2 = ethers.encodeBytes32String("secret2");
@@ -235,9 +238,9 @@ describe("PokerGame.sol", function () {
             await pokerLobby.connect(addr1).joinCashGame(gameId, 1, handPublicKey1, nullHash);
             await pokerLobby.connect(addr2).joinCashGame(gameId, 3, handPublicKey2, nullHash);
             await pokerGame.connect(owner).dealHand(gameId);
-            const dealer = await pokerGame.getDealer(gameId);
-            expect(dealer).to.equal(addr1.address);
-            const hid = pokerGame.getHandId(gameId);
+            let game = await pokerGame.games(gameId);
+            expect(game.dealerSeat).to.equal(1);
+            const hid = game.hid;
             await ethers.provider.send("evm_mine", []);
             await ethers.provider.send("evm_mine", []);
             const blockHash = await pokerDealer.getHash(hid);
@@ -253,20 +256,17 @@ describe("PokerGame.sol", function () {
             await pokerGame.connect(addr1).playerAction(gameId, 1, 0); // Check
             await pokerGame.connect(addr2).playerAction(gameId, 1, 0); // Check
             await pokerGame.connect(addr1).revealHand(gameId, handPrivateKey1, ethers.randomBytes(32));
-            const game = await pokerGame.games(gameId);
+            game = await pokerGame.games(gameId);
             expect(game.state).to.equal(5); // showdown
             await pokerGame.connect(addr2).revealHand(gameId, handPrivateKey2, ethers.randomBytes(32));
             const newGame = await pokerGame.games(gameId);
             expect(newGame.state).to.equal(0); // Waiting
-            const finalBalance1 = await pokerGame.getChips(gameId,addr1.address);
-            const finalBalance2 = await pokerGame.getChips(gameId,addr2.address);
-            expect(finalBalance1 + finalBalance2).to.equal(400);
+            player1 = await pokerGame.getPlayer(gameId, 1);
+            player2 = await pokerGame.getPlayer(gameId, 3);
+            expect(player1.chips + player2.chips).to.equal(400);
         });
 
         it("Should simulate 3 player game", async function () {
-            initialBalance1 = await pokerGame.getChips(gameId,addr1.address);
-            initialBalance2 = await pokerGame.getChips(gameId,addr2.address);
-            initialBalance3 = await pokerGame.getChips(gameId,addr3.address);
             const handPrivateKey1 = ethers.encodeBytes32String("secret1");
             const handPublicKey1 = ethers.keccak256(handPrivateKey1);
             const handPrivateKey2 = ethers.encodeBytes32String("secret2");
@@ -276,10 +276,16 @@ describe("PokerGame.sol", function () {
             await pokerLobby.connect(addr1).joinCashGame(gameId, 0, handPublicKey1, nullHash);
             await pokerLobby.connect(addr2).joinCashGame(gameId, 1, handPublicKey2, nullHash);
             await pokerLobby.connect(addr3).joinCashGame(gameId, 2, handPublicKey3, nullHash);
+            let player1 = await pokerGame.getPlayer(gameId, 0);
+            let player2 = await pokerGame.getPlayer(gameId, 1);
+            let player3 = await pokerGame.getPlayer(gameId, 2);
+            initialBalance1 = player1.chips;
+            initialBalance2 = player2.chips;
+            initialBalance3 = player3.chips;
             await pokerGame.connect(addr1).dealHand(gameId);
-            const dealer = await pokerGame.getDealer(gameId);
-            expect(dealer).to.equal(addr2.address);
-            const hid = pokerGame.getHandId(gameId);
+            let game = await pokerGame.games(gameId);
+            expect(game.dealerSeat).to.equal(1);
+            const hid = game.hid;
             await ethers.provider.send("evm_mine", []);
             await ethers.provider.send("evm_mine", []);
             const blockHash = await pokerDealer.getHash(hid);
@@ -301,11 +307,14 @@ describe("PokerGame.sol", function () {
             await pokerGame.connect(addr1).revealHand(gameId, handPrivateKey1, ethers.randomBytes(32));
             await pokerGame.connect(addr2).revealHand(gameId, handPrivateKey2, ethers.randomBytes(32));
             await pokerGame.connect(addr3).revealHand(gameId, handPrivateKey3, ethers.randomBytes(32));
-            const game = await pokerGame.games(gameId);
+            game = await pokerGame.games(gameId);
             expect(game.state).to.equal(0); // Waiting
-            const finalBalance1 = await pokerGame.getChips(gameId,addr1.address);
-            const finalBalance2 = await pokerGame.getChips(gameId,addr2.address);
-            const finalBalance3 = await pokerGame.getChips(gameId,addr3.address);
+            player1 = await pokerGame.getPlayer(gameId, 0);
+            player2 = await pokerGame.getPlayer(gameId, 1);
+            player3 = await pokerGame.getPlayer(gameId, 2);
+            finalBalance1 = player1.chips;
+            finalBalance2 = player2.chips;
+            finalBalance3 = player3.chips;
             expect(finalBalance1).to.not.equal(initialBalance1); // Balance should change
             expect(finalBalance2).to.not.equal(initialBalance2); // Balance should change
             expect(finalBalance3).to.not.equal(initialBalance3); // Balance should change
@@ -334,10 +343,10 @@ describe("PokerGame.sol", function () {
             }
             
             await pokerGame.connect(addr1).dealHand(gameId);
-            const dealer = await pokerGame.getDealer(gameId);
-            expect(dealer).to.equal(addr2.address);
+            let game = await pokerGame.games(gameId);
+            expect(game.dealerSeat).to.equal(1);
         
-            const hid = pokerGame.getHandId(gameId);
+            const hid = game.hid;
             await ethers.provider.send("evm_mine", []);
             await ethers.provider.send("evm_mine", []);
             const blockHash = await pokerDealer.getHash(hid);
@@ -391,20 +400,33 @@ describe("PokerGame.sol", function () {
                 await pokerGame.connect(players[i]).revealHand(gameId, handPrivateKeys[i], ethers.randomBytes(32));
             }
         
-            const game = await pokerGame.games(gameId);
+            game = await pokerGame.games(gameId);
             expect(game.state).to.equal(0); // Waiting
-        
-            const finalBalances = await Promise.all([
-                pokerGame.getChips(gameId,addr1.address),
-                pokerGame.getChips(gameId,addr2.address),
-                pokerGame.getChips(gameId,addr3.address),
-                pokerGame.getChips(gameId,addr4.address),
-                pokerGame.getChips(gameId,addr5.address),
-                pokerGame.getChips(gameId,addr6.address),
-                pokerGame.getChips(gameId,addr7.address),
-                pokerGame.getChips(gameId,addr8.address),
-                pokerGame.getChips(gameId,addr9.address)
+
+            const playersObj = await Promise.all([
+                pokerGame.getPlayer(gameId, 0),
+                pokerGame.getPlayer(gameId, 1),
+                pokerGame.getPlayer(gameId, 2),
+                pokerGame.getPlayer(gameId, 3),
+                pokerGame.getPlayer(gameId, 4),
+                pokerGame.getPlayer(gameId, 5),
+                pokerGame.getPlayer(gameId, 6),
+                pokerGame.getPlayer(gameId, 7),
+                pokerGame.getPlayer(gameId, 8),
             ]);
+
+            const finalBalances = [
+                playersObj[0].chips,
+                playersObj[1].chips,
+                playersObj[2].chips,
+                playersObj[3].chips,
+                playersObj[4].chips,
+                playersObj[5].chips,
+                playersObj[6].chips,
+                playersObj[7].chips,
+                playersObj[8].chips,
+            ];
+
             let total = 0n;
             for (let i = 0; i < 9; i++) {
                 total += finalBalances[i];
@@ -464,12 +486,14 @@ describe("PokerGame.sol", function () {
             const handPublicKey2 = ethers.keccak256(handPrivateKey2);
             await pokerLobby.connect(addr1).joinCashGame(gameId, 1, handPublicKey1, nullHash);
             await pokerLobby.connect(addr2).joinCashGame(gameId, 3, handPublicKey2, nullHash);
-            initialBalance1 = await pokerGame.getChips(gameId, addr1.address);
-            initialBalance2 = await pokerGame.getChips(gameId, addr2.address);
+            let player1 = await pokerGame.getPlayer(gameId, 1);
+            let player2 = await pokerGame.getPlayer(gameId, 3);
+            initialBalance1 = player1.chips;
+            initialBalance2 = player2.chips;
             await pokerGame.connect(owner).dealHand(gameId);
-            const dealer = await pokerGame.getDealer(gameId);
-            expect(dealer).to.equal(addr1.address);
-            const hid = pokerGame.getHandId(gameId);
+            let game = await pokerGame.games(gameId);
+            expect(game.dealerSeat).to.equal(1);
+            const hid = game.hid;
             await ethers.provider.send("evm_mine", []);
             await ethers.provider.send("evm_mine", []);
             await pokerGame.connect(addr2).playerAction(gameId, 3, 200); // Raise all-in
@@ -477,15 +501,15 @@ describe("PokerGame.sol", function () {
             await ethers.provider.send("evm_mine", []);
             await ethers.provider.send("evm_mine", []);
             await ethers.provider.send("evm_mine", []);
-            const game = await pokerGame.games(gameId);
+            game = await pokerGame.games(gameId);
             expect(game.state).to.equal(5); // showdown
             await pokerGame.connect(addr1).revealHand(gameId, handPrivateKey1, ethers.randomBytes(32));
             await pokerGame.connect(addr2).revealHand(gameId, handPrivateKey2, ethers.randomBytes(32));
             const newGame = await pokerGame.games(gameId);
             expect(newGame.state).to.equal(0); // Waiting
-            const finalBalance1 = await pokerGame.getChips(gameId, addr1.address);
-            const finalBalance2 = await pokerGame.getChips(gameId, addr2.address);
-            expect(finalBalance1 + finalBalance2).to.equal(initialBalance1 + initialBalance2);
+            player1 = await pokerGame.getPlayer(gameId, 1);
+            player2 = await pokerGame.getPlayer(gameId, 3);
+            expect(player1.chips + player2.chips).to.equal(initialBalance1 + initialBalance2);
         });
 
         it("Should correctly handle double raises", async function () {
@@ -499,13 +523,13 @@ describe("PokerGame.sol", function () {
             await pokerLobby.connect(addr2).joinCashGame(gameId, 3, handPublicKey2, nullHash);
             await pokerLobby.connect(addr3).joinCashGame(gameId, 5, handPublicKey3, nullHash)
             await pokerGame.connect(addr1).dealHand(gameId);
-            const dealer = await pokerGame.getDealer(gameId);
-            expect(dealer).to.equal(addr1.address);
+            let game = await pokerGame.games(gameId);
+            expect(game.dealerSeat).to.equal(1);
             await pokerGame.connect(addr1).playerAction(gameId, 3, 10); // Raise
             await pokerGame.connect(addr2).playerAction(gameId, 3, 40); // ReRaise
             await pokerGame.connect(addr3).playerAction(gameId, 2, 0); // Call
             await pokerGame.connect(addr1).playerAction(gameId, 2, 0); // Call
-            let game = await pokerGame.games(gameId);
+            game = await pokerGame.games(gameId);
             expect(game.state).to.equal(2); // Flop
             for (let i = 0; i < 3; i++) {
                 await pokerGame.connect(addr2).playerAction(gameId, 1, 0); // Check
@@ -525,12 +549,15 @@ describe("PokerGame.sol", function () {
             await pokerLobby.connect(addr1).joinCashGame(gameId, 1, handPublicKey1, nullHash);
             await pokerLobby.connect(addr2).joinCashGame(gameId, 3, handPublicKey1, nullHash);
             await pokerLobby.connect(addr3).joinCashGame(gameId, 5, handPublicKey1, nullHash)
-            const initialBalance1 = await pokerGame.getChips(gameId, addr1.address);
-            const initialBalance2 = await pokerGame.getChips(gameId, addr2.address);
-            const initialBalance3 = await pokerGame.getChips(gameId, addr3.address);
+            let player1 = await pokerGame.getPlayer(gameId, 1);
+            let player2 = await pokerGame.getPlayer(gameId, 3);
+            let player3 = await pokerGame.getPlayer(gameId, 5);
+            initialBalance1 = player1.chips;
+            initialBalance2 = player2.chips;
+            initialBalance3 = player3.chips;
             await pokerGame.connect(addr1).dealHand(gameId);
-            const dealer = await pokerGame.getDealer(gameId);
-            expect(dealer).to.equal(addr1.address);
+            let game = await pokerGame.games(gameId);
+            expect(game.dealerSeat).to.equal(1);
             await pokerGame.connect(addr1).playerAction(gameId, 3, 10); // Raise
             await pokerGame.connect(addr2).playerAction(gameId, 3, 40); // ReRaise
             await pokerGame.connect(addr3).playerAction(gameId, 2, 0); // Call
@@ -543,14 +570,14 @@ describe("PokerGame.sol", function () {
             await pokerGame.connect(addr1).revealHand(gameId, handPrivateKey1, ethers.randomBytes(32));
             await pokerGame.connect(addr2).revealHand(gameId, handPrivateKey1, ethers.randomBytes(32));
             await pokerGame.connect(addr3).revealHand(gameId, handPrivateKey1, ethers.randomBytes(32));
-            const game = await pokerGame.games(gameId);
+            game = await pokerGame.games(gameId);
             expect(game.state).to.equal(0); // Waiting
-            const finalBalance1 = await pokerGame.getChips(gameId, addr1.address);
-            const finalBalance2 = await pokerGame.getChips(gameId, addr2.address);
-            const finalBalance3 = await pokerGame.getChips(gameId, addr3.address);
-            expect(finalBalance1).to.equal(initialBalance1);
-            expect(finalBalance2).to.equal(initialBalance2);
-            expect(finalBalance3).to.equal(initialBalance3);
+            player1 = await pokerGame.getPlayer(gameId, 1);
+            player2 = await pokerGame.getPlayer(gameId, 3);
+            player3 = await pokerGame.getPlayer(gameId, 5);
+            expect(player1.chips).to.equal(initialBalance1);
+            expect(player2.chips).to.equal(initialBalance2);
+            expect(player3.chips).to.equal(initialBalance3);
         });
     });
 
@@ -575,12 +602,15 @@ describe("PokerGame.sol", function () {
             await pokerLobby.connect(addr1).joinCashGame(gameId, 1, handPublicKey1, nullHash);
             await pokerLobby.connect(addr2).joinCashGame(gameId, 3, handPublicKey2, nullHash);
             await pokerLobby.connect(addr3).joinCashGame(gameId, 5, handPublicKey3, nullHash);
-            initialBalance1 = await pokerGame.getChips(gameId, addr1.address);
-            initialBalance2 = await pokerGame.getChips(gameId, addr2.address);
-            initialBalance3 = await pokerGame.getChips(gameId, addr3.address);
+            let player1 = await pokerGame.getPlayer(gameId, 1);
+            let player2 = await pokerGame.getPlayer(gameId, 3);
+            let player3 = await pokerGame.getPlayer(gameId, 5);
+            initialBalance1 = player1.chips;
+            initialBalance2 = player2.chips;
+            initialBalance3 = player3.chips;
             await pokerGame.connect(owner).dealHand(gameId);
-            const dealer = await pokerGame.getDealer(gameId);
-            expect(dealer).to.equal(addr1.address);
+            let game = await pokerGame.games(gameId);
+            expect(game.dealerSeat).to.equal(1);
             await ethers.provider.send("evm_mine", []);
             await ethers.provider.send("evm_mine", []);
         });
@@ -595,12 +625,12 @@ describe("PokerGame.sol", function () {
             await pokerGame.connect(addr1).revealHand(gameId, handPrivateKey1, ethers.randomBytes(32));
             const newGame = await pokerGame.games(gameId);
             expect(newGame.state).to.equal(0); // Waiting
-            const finalBalance1 = await pokerGame.getChips(gameId, addr1.address);
-            const finalBalance2 = await pokerGame.getChips(gameId, addr2.address);
-            const finalBalance3 = await pokerGame.getChips(gameId, addr3.address);
-            expect(finalBalance1).to.not.equal(initialBalance1);
-            expect(finalBalance2).to.not.equal(initialBalance2);
-            expect(finalBalance3).to.not.equal(initialBalance3);
+            let player1 = await pokerGame.getPlayer(gameId, 1);
+            let player2 = await pokerGame.getPlayer(gameId, 3);
+            let player3 = await pokerGame.getPlayer(gameId, 5);
+            expect(player1.chips).to.not.equal(initialBalance1);
+            expect(player2.chips).to.not.equal(initialBalance2);
+            expect(player3.chips).to.not.equal(initialBalance3);
         });
 
         it("Should handle a game where all players check until the end", async function () {
@@ -621,12 +651,12 @@ describe("PokerGame.sol", function () {
             await pokerGame.connect(addr3).revealHand(gameId, handPrivateKey3, ethers.randomBytes(32));
             const newGame = await pokerGame.games(gameId);
             expect(newGame.state).to.equal(0); // Waiting
-            const finalBalance1 = await pokerGame.getChips(gameId, addr1.address);
-            const finalBalance2 = await pokerGame.getChips(gameId, addr2.address);
-            const finalBalance3 = await pokerGame.getChips(gameId, addr3.address);
-            expect(finalBalance1).to.not.equal(initialBalance1);
-            expect(finalBalance2).to.not.equal(initialBalance2);
-            expect(finalBalance3).to.not.equal(initialBalance3);
+            let player1 = await pokerGame.getPlayer(gameId, 1);
+            let player2 = await pokerGame.getPlayer(gameId, 3);
+            let player3 = await pokerGame.getPlayer(gameId, 5);
+            expect(player1.chips).to.not.equal(initialBalance1);
+            expect(player2.chips).to.not.equal(initialBalance2);
+            expect(player3.chips).to.not.equal(initialBalance3);
         });
         
         it("Dealer shoves and others call", async function () {
@@ -640,13 +670,10 @@ describe("PokerGame.sol", function () {
             await pokerGame.connect(addr3).revealHand(gameId, handPrivateKey3, ethers.randomBytes(32));
             const newGame = await pokerGame.games(gameId);
             expect(newGame.state).to.equal(0); // Waiting
-            const finalBalance1 = await pokerGame.getChips(gameId, addr1.address);
-            const finalBalance2 = await pokerGame.getChips(gameId, addr2.address);
-            const finalBalance3 = await pokerGame.getChips(gameId, addr3.address);
-            expect(finalBalance1).to.not.equal(200);
-            expect(finalBalance2).to.not.equal(200);
-            expect(finalBalance3).to.not.equal(200);
-            expect(finalBalance1 + finalBalance2 + finalBalance3).to.equal(600);
+            let player1 = await pokerGame.getPlayer(gameId, 1);
+            let player2 = await pokerGame.getPlayer(gameId, 3);
+            let player3 = await pokerGame.getPlayer(gameId, 5);
+            expect(player1.chips + player2.chips + player3.chips).to.equal(600);
         });
         
         it("Should handle a game where two players go all-in and one folds", async function () {
@@ -659,11 +686,11 @@ describe("PokerGame.sol", function () {
             await pokerGame.connect(addr2).revealHand(gameId, handPrivateKey2, ethers.randomBytes(32));
             const newGame = await pokerGame.games(gameId);
             expect(newGame.state).to.equal(0); // Waiting
-            const finalBalance1 = await pokerGame.getChips(gameId, addr1.address);
-            const finalBalance2 = await pokerGame.getChips(gameId, addr2.address);
-            const finalBalance3 = await pokerGame.getChips(gameId, addr3.address);
-            expect(finalBalance1 + finalBalance2 + finalBalance3).to.equal(600);
-            expect(finalBalance3).to.be.lt(initialBalance3);
+            let player1 = await pokerGame.getPlayer(gameId, 1);
+            let player2 = await pokerGame.getPlayer(gameId, 3);
+            let player3 = await pokerGame.getPlayer(gameId, 5);
+            expect(player1.chips + player2.chips + player3.chips).to.equal(600);
+            expect(player3.chips).to.be.lt(initialBalance3);
         });
         
         it("Should handle a game where one player raises and others fold after the flop", async function () {
@@ -679,12 +706,12 @@ describe("PokerGame.sol", function () {
             await pokerGame.connect(addr2).revealHand(gameId, handPrivateKey2, ethers.randomBytes(32));
             const newGame = await pokerGame.games(gameId);
             expect(newGame.state).to.equal(0); // Waiting
-            const finalBalance1 = await pokerGame.getChips(gameId, addr1.address);
-            const finalBalance2 = await pokerGame.getChips(gameId, addr2.address);
-            const finalBalance3 = await pokerGame.getChips(gameId, addr3.address);
-            expect(finalBalance2).to.be.gt(initialBalance2);
-            expect(finalBalance1).to.be.lt(initialBalance1);
-            expect(finalBalance3).to.be.lt(initialBalance3);
+            let player1 = await pokerGame.getPlayer(gameId, 1);
+            let player2 = await pokerGame.getPlayer(gameId, 3);
+            let player3 = await pokerGame.getPlayer(gameId, 5);
+            expect(player1.chips).to.be.lt(initialBalance1);
+            expect(player2.chips).to.be.gt(initialBalance2);
+            expect(player3.chips).to.be.lt(initialBalance3);
         });
         
         it("Should handle a game where players make multiple raises", async function () {
@@ -711,13 +738,13 @@ describe("PokerGame.sol", function () {
             await pokerGame.connect(addr3).revealHand(gameId, handPrivateKey3, ethers.randomBytes(32));
             const newGame = await pokerGame.games(gameId);
             expect(newGame.state).to.equal(0); // Waiting
-            const finalBalance1 = await pokerGame.getChips(gameId, addr1.address);
-            const finalBalance2 = await pokerGame.getChips(gameId, addr2.address);
-            const finalBalance3 = await pokerGame.getChips(gameId, addr3.address);
-            expect(finalBalance1).to.not.equal(200);
-            expect(finalBalance2).to.not.equal(200);
-            expect(finalBalance3).to.not.equal(200);
-            expect(finalBalance1 + finalBalance2 + finalBalance3).to.equal(600);
+            let player1 = await pokerGame.getPlayer(gameId, 1);
+            let player2 = await pokerGame.getPlayer(gameId, 3);
+            let player3 = await pokerGame.getPlayer(gameId, 5);
+            expect(player1.chips).to.not.equal(200);
+            expect(player2.chips).to.not.equal(200);
+            expect(player3.chips).to.not.equal(200);
+            expect(player1.chips + player2.chips + player3.chips).to.equal(600);
         });
 
         it("Should fail when a player tries to raise more than balance", async function () {
@@ -748,12 +775,15 @@ describe("PokerGame.sol", function () {
             await pokerLobby.connect(addr1).joinCashGame(gameId, 1, handPublicKey1, nullHash);
             await pokerLobby.connect(addr2).joinCashGame(gameId, 3, handPublicKey2, nullHash);
             await pokerLobby.connect(addr3).joinCashGame(gameId, 5, handPublicKey3, nullHash);
-            initialBalance1 = await pokerGame.getChips(gameId, addr1.address);
-            initialBalance2 = await pokerGame.getChips(gameId, addr2.address);
-            initialBalance3 = await pokerGame.getChips(gameId, addr3.address);
+            let player1 = await pokerGame.getPlayer(gameId, 1);
+            let player2 = await pokerGame.getPlayer(gameId, 3);
+            let player3 = await pokerGame.getPlayer(gameId, 5);
+            initialBalance1 = player1.chips;
+            initialBalance2 = player2.chips;
+            initialBalance3 = player3.chips;
             await pokerGame.connect(owner).dealHand(gameId);
-            const dealer = await pokerGame.getDealer(gameId);
-            expect(dealer).to.equal(addr1.address);
+            let game = await pokerGame.games(gameId);
+            expect(game.dealerSeat).to.equal(1);
             await ethers.provider.send("evm_mine", []);
             await ethers.provider.send("evm_mine", []);
         });
@@ -774,12 +804,12 @@ describe("PokerGame.sol", function () {
             await pokerGame.connect(addr2).revealHand(gameId, handPrivateKey2, newHandPublicKey2);
             const newGame = await pokerGame.games(gameId);
             expect(newGame.state).to.equal(0); // Waiting
-            const balance1 = await pokerGame.getChips(gameId, addr1.address);
-            const balance2 = await pokerGame.getChips(gameId, addr2.address);
-            const balance3 = await pokerGame.getChips(gameId, addr3.address);
-            expect(balance1).to.equal(150);
-            expect(balance2).to.equal(300);
-            expect(balance3).to.equal(150);
+            let player1 = await pokerGame.getPlayer(gameId, 1);
+            let player2 = await pokerGame.getPlayer(gameId, 3);
+            let player3 = await pokerGame.getPlayer(gameId, 5);
+            expect(player1.chips).to.equal(150);
+            expect(player2.chips).to.equal(300);
+            expect(player3.chips).to.equal(150);
             await pokerGame.connect(owner).dealHand(gameId);
             await pokerGame.connect(addr2).playerAction(gameId, 3, 300); // Raise All-In 300
             await pokerGame.connect(addr3).playerAction(gameId, 2, 0); // Call 150
@@ -789,10 +819,10 @@ describe("PokerGame.sol", function () {
             await pokerGame.connect(addr1).revealHand(gameId, handPrivateKey1, ethers.randomBytes(32));
             await pokerGame.connect(addr2).revealHand(gameId, newHandPrivateKey2, ethers.randomBytes(32));
             await pokerGame.connect(addr3).revealHand(gameId, handPrivateKey3, ethers.randomBytes(32));
-            const finalBalance1 = await pokerGame.getChips(gameId, addr1.address);
-            const finalBalance2 = await pokerGame.getChips(gameId, addr2.address);
-            const finalBalance3 = await pokerGame.getChips(gameId, addr3.address);
-            const balances = [finalBalance1, finalBalance2, finalBalance3];
+            player1 = await pokerGame.getPlayer(gameId, 1);
+            player2 = await pokerGame.getPlayer(gameId, 3);
+            player3 = await pokerGame.getPlayer(gameId, 5);
+            const balances = [player1.chips, player2.chips, player3.chips];
             //console.log(balances);
             const possibleOutcomes = [[450n, 150n, 0n], [0n, 600n, 0n], [0n, 150n, 450n], [225n, 375n, 0n], [225n, 150n, 225n], [0n, 375n, 225n], [200n, 200n, 200n], [150n, 300n, 150n]];
             expect(checkPossibleOutcomes(balances, possibleOutcomes)).to.equal(true);
@@ -807,22 +837,25 @@ describe("PokerGame.sol", function () {
             await pokerGame.connect(addr2).playerAction(gameId, 3, 10); // Raise
             await pokerGame.connect(addr3).playerAction(gameId, 0, 0); // Fold
             await pokerGame.connect(addr1).playerAction(gameId, 0, 0); // Fold
-            game = await pokerGame.games(gameId);
+            let game = await pokerGame.games(gameId);
             expect(game.state).to.equal(5); // showdown
             newHandPrivateKey2 = ethers.encodeBytes32String("secret2b");
             newHandPublicKey2 = ethers.keccak256(newHandPrivateKey2);
             await pokerGame.connect(addr2).revealHand(gameId, handPrivateKey2, newHandPublicKey2);
             const newGame = await pokerGame.games(gameId);
             expect(newGame.state).to.equal(0); // Waiting
-            const balance1 = await pokerGame.getChips(gameId, addr1.address);
-            const balance2 = await pokerGame.getChips(gameId, addr2.address);
-            const balance3 = await pokerGame.getChips(gameId, addr3.address);
+            let player1 = await pokerGame.getPlayer(gameId, 1);
+            let player2 = await pokerGame.getPlayer(gameId, 3);
+            let player3 = await pokerGame.getPlayer(gameId, 5);
+            const balance1 = player1.chips;
+            const balance2 = player2.chips;
+            const balance3 = player3.chips;
             expect(balance1).to.equal(150);
             expect(balance2).to.equal(300);
             expect(balance3).to.equal(150);
             await pokerGame.connect(owner).dealHand(gameId);
-            const dealer = await pokerGame.getDealer(gameId);
-            expect(dealer).to.equal(addr2.address);
+            game = await pokerGame.games(gameId);
+            expect(game.dealerSeat).to.equal(3);
             await pokerGame.connect(addr2).playerAction(gameId, 2, 0); // Call
             await pokerGame.connect(addr3).playerAction(gameId, 3, 150); // Raise All-In 150
             await pokerGame.connect(addr1).playerAction(gameId, 2, 0); // Call 150
@@ -834,10 +867,10 @@ describe("PokerGame.sol", function () {
             await pokerGame.connect(addr1).revealHand(gameId, handPrivateKey1, ethers.randomBytes(32));
             await pokerGame.connect(addr2).revealHand(gameId, newHandPrivateKey2, ethers.randomBytes(32));
             await pokerGame.connect(addr3).revealHand(gameId, handPrivateKey3, ethers.randomBytes(32));
-            const finalBalance1 = await pokerGame.getChips(gameId, addr1.address);
-            const finalBalance2 = await pokerGame.getChips(gameId, addr2.address);
-            const finalBalance3 = await pokerGame.getChips(gameId, addr3.address);
-            const balances = [finalBalance1, finalBalance2, finalBalance3];
+            player1 = await pokerGame.getPlayer(gameId, 1);
+            player2 = await pokerGame.getPlayer(gameId, 3);
+            player3 = await pokerGame.getPlayer(gameId, 5);
+            const balances = [player1.chips, player2.chips, player3.chips];
             //console.log(balances);
             const possibleOutcomes = [[450n, 150n, 0n], [0n, 600n, 0n], [0n, 150n, 450n], [225n, 375n, 0n], [225n, 150n, 225n], [0n, 375n, 225n], [200n, 200n, 200n], [150n, 300n, 150n]];
             expect(checkPossibleOutcomes(balances, possibleOutcomes)).to.equal(true);
@@ -860,12 +893,12 @@ describe("PokerGame.sol", function () {
             await pokerGame.connect(addr2).revealHand(gameId, handPrivateKey2, newHandPublicKey2);
             const newGame = await pokerGame.games(gameId);
             expect(newGame.state).to.equal(0); // Waiting
-            const balance1 = await pokerGame.getChips(gameId, addr1.address);
-            const balance2 = await pokerGame.getChips(gameId, addr2.address);
-            const balance3 = await pokerGame.getChips(gameId, addr3.address);
-            expect(balance1).to.equal(150);
-            expect(balance2).to.equal(300);
-            expect(balance3).to.equal(150);
+            let player1 = await pokerGame.getPlayer(gameId, 1);
+            let player2 = await pokerGame.getPlayer(gameId, 3);
+            let player3 = await pokerGame.getPlayer(gameId, 5);
+            expect(player1.chips).to.equal(150);
+            expect(player2.chips).to.equal(300);
+            expect(player3.chips).to.equal(150);
             await pokerGame.connect(owner).dealHand(gameId);
             await pokerGame.connect(addr2).playerAction(gameId, 2, 0); // Call
             await pokerGame.connect(addr3).playerAction(gameId, 2, 0); // Call
@@ -877,10 +910,10 @@ describe("PokerGame.sol", function () {
             await pokerGame.connect(addr1).revealHand(gameId, handPrivateKey1, ethers.randomBytes(32));
             await pokerGame.connect(addr2).revealHand(gameId, newHandPrivateKey2, ethers.randomBytes(32));
             await pokerGame.connect(addr3).revealHand(gameId, handPrivateKey3, ethers.randomBytes(32));
-            const finalBalance1 = await pokerGame.getChips(gameId, addr1.address);
-            const finalBalance2 = await pokerGame.getChips(gameId, addr2.address);
-            const finalBalance3 = await pokerGame.getChips(gameId, addr3.address);
-            const balances = [finalBalance1, finalBalance2, finalBalance3];
+            player1 = await pokerGame.getPlayer(gameId, 1);
+            player2 = await pokerGame.getPlayer(gameId, 3);
+            player3 = await pokerGame.getPlayer(gameId, 5);
+            const balances = [player1.chips, player2.chips, player3.chips];
             //console.log(balances);
             const possibleOutcomes = [[450n, 150n, 0n], [0n, 600n, 0n], [0n, 150n, 450n], [225n, 375n, 0n], [225n, 150n, 225n], [0n, 375n, 225n], [200n, 200n, 200n], [150n, 300n, 150n]];
             expect(checkPossibleOutcomes(balances, possibleOutcomes)).to.equal(true);
@@ -918,13 +951,12 @@ describe("PokerGame.sol", function () {
             await pokerGame.connect(addr3).revealHand(gameId, handPrivateKey3, handPublicKey3b);
             const newGame = await pokerGame.games(gameId);
             expect(newGame.state).to.equal(0); // Waiting
-
-            const balance1 = await pokerGame.getChips(gameId, addr1.address);
-            const balance2 = await pokerGame.getChips(gameId, addr2.address);
-            const balance3 = await pokerGame.getChips(gameId, addr3.address);
-            expect(balance1).to.equal(100);
-            expect(balance2).to.equal(250);
-            expect(balance3).to.equal(250);
+            let player1 = await pokerGame.getPlayer(gameId, 1);
+            let player2 = await pokerGame.getPlayer(gameId, 3);
+            let player3 = await pokerGame.getPlayer(gameId, 5);
+            expect(player1.chips).to.equal(100);
+            expect(player2.chips).to.equal(250);
+            expect(player3.chips).to.equal(250);
             await pokerGame.connect(owner).dealHand(gameId);
             await pokerGame.connect(addr3).playerAction(gameId, 2, 0); // Call
             await pokerGame.connect(addr1).playerAction(gameId, 3, 100); // Raise 100
@@ -947,10 +979,10 @@ describe("PokerGame.sol", function () {
             await pokerGame.connect(addr1).revealHand(gameId, handPrivateKey1, ethers.randomBytes(32));
             await pokerGame.connect(addr2).revealHand(gameId, handPrivateKey2b, ethers.randomBytes(32));
             await pokerGame.connect(addr3).revealHand(gameId, handPrivateKey3b, ethers.randomBytes(32));
-            const finalBalance1 = await pokerGame.getChips(gameId, addr1.address);
-            const finalBalance2 = await pokerGame.getChips(gameId, addr2.address);
-            const finalBalance3 = await pokerGame.getChips(gameId, addr3.address);
-            const balances = [finalBalance1, finalBalance2, finalBalance3];
+            player1 = await pokerGame.getPlayer(gameId, 1);
+            player2 = await pokerGame.getPlayer(gameId, 3);
+            player3 = await pokerGame.getPlayer(gameId, 5);
+            const balances = [player1.chips, player2.chips, player3.chips];
             //console.log(balances);
             const possibleOutcomes = [[300n, 300n, 0n], [300n, 0n, 300n], [0n, 600n, 0n], [0n, 0n, 600n], [150n, 450n, 0n], [150n, 0n, 450n], [0n, 400n, 200n], [100n, 350n, 150n], [0n, 300n, 300n], [100n, 250, 250n]];
             expect(checkPossibleOutcomes(balances, possibleOutcomes)).to.equal(true);
@@ -988,13 +1020,12 @@ describe("PokerGame.sol", function () {
             await pokerGame.connect(addr3).revealHand(gameId, handPrivateKey3, handPublicKey3b);
             const newGame = await pokerGame.games(gameId);
             expect(newGame.state).to.equal(0); // Waiting
-
-            const balance1 = await pokerGame.getChips(gameId, addr1.address);
-            const balance2 = await pokerGame.getChips(gameId, addr2.address);
-            const balance3 = await pokerGame.getChips(gameId, addr3.address);
-            expect(balance1).to.equal(130);
-            expect(balance2).to.equal(280);
-            expect(balance3).to.equal(190);
+            let player1 = await pokerGame.getPlayer(gameId, 1);
+            let player2 = await pokerGame.getPlayer(gameId, 3);
+            let player3 = await pokerGame.getPlayer(gameId, 5);
+            expect(player1.chips).to.equal(130);
+            expect(player2.chips).to.equal(280);
+            expect(player3.chips).to.equal(190);
             await pokerGame.connect(owner).dealHand(gameId);
             await pokerGame.connect(addr3).playerAction(gameId, 2, 0); // Call
             await pokerGame.connect(addr1).playerAction(gameId, 3, 130); // Raise 100
@@ -1005,10 +1036,10 @@ describe("PokerGame.sol", function () {
             await pokerGame.connect(addr1).revealHand(gameId, handPrivateKey1, ethers.randomBytes(32));
             await pokerGame.connect(addr2).revealHand(gameId, handPrivateKey2b, ethers.randomBytes(32));
             await pokerGame.connect(addr3).revealHand(gameId, handPrivateKey3b, ethers.randomBytes(32));
-            const finalBalance1 = await pokerGame.getChips(gameId, addr1.address);
-            const finalBalance2 = await pokerGame.getChips(gameId, addr2.address);
-            const finalBalance3 = await pokerGame.getChips(gameId, addr3.address);
-            const balances = [finalBalance1, finalBalance2, finalBalance3];
+            player1 = await pokerGame.getPlayer(gameId, 1);
+            player2 = await pokerGame.getPlayer(gameId, 3);
+            player3 = await pokerGame.getPlayer(gameId, 5);
+            const balances = [player1.chips, player2.chips, player3.chips];
             //console.log(balances);
             const possibleOutcomes = [[390n, 210n, 0n], [0n, 600n, 0n], [0n, 0n, 600n], [390n, 90n, 120n], [195n, 345n, 0n], [195n, 210n, 195n], [0n, 345n, 255n], [130n, 340n, 130n], [0n, 90n, 510n], [390n, 150n, 60n],[130n, 280n, 190n]];
             expect(checkPossibleOutcomes(balances, possibleOutcomes)).to.equal(true);
@@ -1037,12 +1068,15 @@ describe("PokerGame.sol", function () {
             await pokerLobby.connect(addr1).joinCashGame(gameId, 1, handPublicKey1, nullHash);
             await pokerLobby.connect(addr2).joinCashGame(gameId, 3, handPublicKey2, nullHash);
             await pokerLobby.connect(addr3).joinCashGame(gameId, 5, handPublicKey3, nullHash);
-            initialBalance1 = await pokerGame.getChips(gameId, addr1.address);
-            initialBalance2 = await pokerGame.getChips(gameId, addr2.address);
-            initialBalance3 = await pokerGame.getChips(gameId, addr3.address);
+            let player1 = await pokerGame.getPlayer(gameId, 1);
+            let player2 = await pokerGame.getPlayer(gameId, 3);
+            let player3 = await pokerGame.getPlayer(gameId, 5);
+            initialBalance1 = player1.chips;
+            initialBalance2 = player2.chips;
+            initialBalance3 = player3.chips;
             await pokerGame.connect(owner).dealHand(gameId);
-            const dealer = await pokerGame.getDealer(gameId);
-            expect(dealer).to.equal(addr1.address);
+            let game = await pokerGame.games(gameId);
+            expect(game.dealerSeat).to.equal(1);
             await ethers.provider.send("evm_mine", []);
             await ethers.provider.send("evm_mine", []);
         });
@@ -1058,9 +1092,7 @@ describe("PokerGame.sol", function () {
 
             const game = await pokerGame.games(gameId);
             expect(game.state).to.equal(3);
-            const action = await pokerGame.getAction(gameId);
-            const actionSeat = await pokerGame.getSeat(gameId, action);
-            expect(actionSeat).to.equal(3);
+            expect(game.actionOnSeat).to.equal(3);
             await pokerGame.connect(addr2).playerAction(gameId, 3, 10); // Raise
             await pokerGame.connect(addr1).playerAction(gameId, 2, 0); // Call
 
@@ -1071,8 +1103,8 @@ describe("PokerGame.sol", function () {
             await pokerGame.connect(addr1).revealHand(gameId, handPrivateKey1, ethers.randomBytes(32));
             const newGame = await pokerGame.games(gameId);
             expect(newGame.state).to.equal(0); // Waiting
-            const finalBalance3 = await pokerGame.getChips(gameId, addr3.address);
-            expect(finalBalance3).to.equal(0);
+            let player3 = await pokerGame.getPlayer(gameId, 5);
+            expect(player3.chips).to.equal(0);
         });
 
         it("Should handle dealer leaving mid game", async function () {
@@ -1096,8 +1128,8 @@ describe("PokerGame.sol", function () {
             await pokerGame.connect(addr3).revealHand(gameId, handPrivateKey3, ethers.randomBytes(32));
             const newGame = await pokerGame.games(gameId);
             expect(newGame.state).to.equal(0); // Waiting
-            const finalBalance1 = await pokerGame.getChips(gameId, addr1.address);
-            expect(finalBalance1).to.equal(0);
+            let player1 = await pokerGame.getPlayer(gameId, 1);
+            expect(player1.chips).to.equal(0);
         });
 
         it("Should handle a player exodus mid game", async function () {
@@ -1114,10 +1146,10 @@ describe("PokerGame.sol", function () {
             await pokerGame.connect(addr2).revealHand(gameId, handPrivateKey2, ethers.randomBytes(32));
             const newGame = await pokerGame.games(gameId);
             expect(newGame.state).to.equal(0); // Waiting
-            const finalBalance1 = await pokerGame.getChips(gameId, addr1.address);
-            expect(finalBalance1).to.equal(0);
-            const finalBalance3 = await pokerGame.getChips(gameId, addr3.address);
-            expect(finalBalance3).to.equal(0);
+            let player1 = await pokerGame.getPlayer(gameId, 1);
+            let player3 = await pokerGame.getPlayer(gameId, 5);
+            expect(player1.chips).to.equal(0);
+            expect(player3.chips).to.equal(0);
         });
 
         it("Should handle a player getting autofolded mid game", async function () {
@@ -1143,8 +1175,8 @@ describe("PokerGame.sol", function () {
             await pokerGame.connect(addr1).revealHand(gameId, handPrivateKey1, ethers.randomBytes(32));
             const newGame = await pokerGame.games(gameId);
             expect(newGame.state).to.equal(0); // Waiting
-            const finalBalance3 = await pokerGame.getChips(gameId, addr3.address);
-            expect(finalBalance3).to.equal(0);
+            let player3 = await pokerGame.getPlayer(gameId, 5);
+            expect(player3.chips).to.equal(0);
         });
 
         it("Should handle a non-revealer getting autofolded at showdown", async function () {
@@ -1169,8 +1201,8 @@ describe("PokerGame.sol", function () {
             await pokerGame.connect(addr2).closeHand(gameId);
             const newGame = await pokerGame.games(gameId);
             expect(newGame.state).to.equal(0); // Waiting
-            const finalBalance2 = await pokerGame.getChips(gameId, addr2.address);
-            expect(finalBalance2).to.be.gt(initialBalance2);
+            let player2 = await pokerGame.getPlayer(gameId, 3);
+            expect(player2.chips).to.be.gt(initialBalance2);
         });
     });
 
@@ -1197,13 +1229,17 @@ describe("PokerGame.sol", function () {
             await pokerLobby.connect(addr2).joinCashGame(gameId, 2, handPublicKey, nullHash); // same cards
             await pokerLobby.connect(addr3).joinCashGame(gameId, 3, handPublicKey, nullHash); // same cards
             await pokerLobby.connect(addr4).joinCashGame(gameId, 4, handPublicKey, nullHash); // same cards
-            initialBalance1 = await pokerGame.getChips(gameId, addr1.address);
-            initialBalance2 = await pokerGame.getChips(gameId, addr2.address);
-            initialBalance3 = await pokerGame.getChips(gameId, addr3.address);
-            initialBalance4 = await pokerGame.getChips(gameId, addr4.address);
+            player1 = await pokerGame.getPlayer(gameId, 1);
+            player2 = await pokerGame.getPlayer(gameId, 2);
+            player3 = await pokerGame.getPlayer(gameId, 3);
+            player4 = await pokerGame.getPlayer(gameId, 4);
+            initialBalance1 = player1.chips;
+            initialBalance2 = player2.chips;
+            initialBalance3 = player3.chips;
+            initialBalance4 = player4.chips;
             await pokerGame.connect(owner).dealHand(gameId);
-            const dealer = await pokerGame.getDealer(gameId);
-            expect(dealer).to.equal(addr1.address);
+            let game = await pokerGame.games(gameId);
+            expect(game.dealerSeat).to.equal(1);
             await pokerGame.connect(addr4).playerAction(gameId, 3, 10); // Raise
             await pokerGame.connect(addr1).playerAction(gameId, 2, 10); // Call
             await pokerGame.connect(addr2).playerAction(gameId, 2, 0); // Call
@@ -1217,7 +1253,7 @@ describe("PokerGame.sol", function () {
 
             await pokerGame.connect(addr3).playerAction(gameId, 1, 0); // Check
             await pokerGame.connect(addr4).playerAction(gameId, 1, 0); // Check
-            let game = await pokerGame.games(gameId);
+            game = await pokerGame.games(gameId);
             expect(game.state).to.equal(4); // River
             await pokerGame.connect(addr3).playerAction(gameId, 1, 0); // Check
             await pokerGame.connect(addr4).playerAction(gameId, 1, 0); // Check
@@ -1226,25 +1262,27 @@ describe("PokerGame.sol", function () {
             await pokerGame.connect(addr3).revealHand(gameId, handPrivateKey, ethers.randomBytes(32));
             await pokerGame.connect(addr4).revealHand(gameId, handPrivateKey, ethers.randomBytes(32));
 
-            const finalBalance1 = await pokerGame.getChips(gameId, addr1.address);
-            const finalBalance2 = await pokerGame.getChips(gameId, addr2.address);
-            const finalBalance3 = await pokerGame.getChips(gameId, addr3.address);
-            const finalBalance4 = await pokerGame.getChips(gameId, addr4.address);
+            player1 = await pokerGame.getPlayer(gameId, 1);
+            player2 = await pokerGame.getPlayer(gameId, 2);
+            player3 = await pokerGame.getPlayer(gameId, 3);
+            player4 = await pokerGame.getPlayer(gameId, 4);
 
-            expect(finalBalance1).to.equal(190); // Lost chips
-            expect(finalBalance2).to.equal(190); // Lost chips
-            expect(finalBalance3).to.equal(210); // Split the pot
-            expect(finalBalance4).to.equal(210); // Split the pot
+            expect(player1.chips).to.equal(190); // Lost chips
+            expect(player2.chips).to.equal(190); // Lost chips
+            expect(player3.chips).to.equal(210); // Split the pot
+            expect(player4.chips).to.equal(210); // Split the pot
         });
 
         it("Should correctly split the pot between two players in a heads up game", async function () {
             await pokerLobby.connect(addr1).joinCashGame(gameId, 1, handPublicKey, nullHash); // same cards
             await pokerLobby.connect(addr2).joinCashGame(gameId, 2, handPublicKey, nullHash); // same cards
-            initialBalance1 = await pokerGame.getChips(gameId, addr1.address);
-            initialBalance2 = await pokerGame.getChips(gameId, addr2.address);
+            let player1 = await pokerGame.getPlayer(gameId, 1);
+            let player2 = await pokerGame.getPlayer(gameId, 2);
+            initialBalance1 = player1.chips;
+            initialBalance2 = player2.chips;
             await pokerGame.connect(owner).dealHand(gameId);
-            const dealer = await pokerGame.getDealer(gameId);
-            expect(dealer).to.equal(addr1.address);
+            let game = await pokerGame.games(gameId);
+            expect(game.dealerSeat).to.equal(1);
 
             await pokerGame.connect(addr2).playerAction(gameId, 3, 10); // Raise
             await pokerGame.connect(addr1).playerAction(gameId, 2, 10); // Call
@@ -1258,28 +1296,32 @@ describe("PokerGame.sol", function () {
             await pokerGame.connect(addr1).playerAction(gameId, 1, 0); // Check
             await pokerGame.connect(addr2).playerAction(gameId, 1, 0); // Check
 
-            let game = await pokerGame.games(gameId);
+            game = await pokerGame.games(gameId);
             expect(game.state).to.equal(5); // Showdown
 
             await pokerGame.connect(addr1).revealHand(gameId, handPrivateKey, ethers.randomBytes(32));
             await pokerGame.connect(addr2).revealHand(gameId, handPrivateKey, ethers.randomBytes(32));
 
-            const finalBalance1 = await pokerGame.getChips(gameId, addr1.address);
-            const finalBalance2 = await pokerGame.getChips(gameId, addr2.address);
+            player1 = await pokerGame.getPlayer(gameId, 1);
+            player2 = await pokerGame.getPlayer(gameId, 2);
 
-            expect(finalBalance1).to.equal(initialBalance1);
-            expect(finalBalance2).to.equal(initialBalance2);
+            expect(player1.chips).to.equal(initialBalance1);
+            expect(player2.chips).to.equal(initialBalance2);
         });
 
         it("Should correctly split the pot three ways", async function () {
             await pokerLobby.connect(addr1).joinCashGame(gameId, 1, handPublicKey, nullHash); // same cards
             await pokerLobby.connect(addr2).joinCashGame(gameId, 2, handPublicKey, nullHash); // same cards
             await pokerLobby.connect(addr3).joinCashGame(gameId, 3, handPublicKey, nullHash); // same cards
-            initialBalance1 = await pokerGame.getChips(gameId, addr1.address);
-            initialBalance2 = await pokerGame.getChips(gameId, addr2.address);
+            let player1 = await pokerGame.getPlayer(gameId, 1);
+            let player2 = await pokerGame.getPlayer(gameId, 2);
+            let player3 = await pokerGame.getPlayer(gameId, 3);
+            initialBalance1 = player1.chips;
+            initialBalance2 = player2.chips;
+            initialBalance3 = player3.chips;
             await pokerGame.connect(owner).dealHand(gameId);
-            const dealer = await pokerGame.getDealer(gameId);
-            expect(dealer).to.equal(addr1.address);
+            let game = await pokerGame.games(gameId);
+            expect(game.dealerSeat).to.equal(1);
 
             await pokerGame.connect(addr1).playerAction(gameId, 3, 10); // Raise
             await pokerGame.connect(addr2).playerAction(gameId, 2, 10); // Call
@@ -1297,20 +1339,20 @@ describe("PokerGame.sol", function () {
             await pokerGame.connect(addr3).playerAction(gameId, 1, 0); // Check
             await pokerGame.connect(addr1).playerAction(gameId, 1, 0); // Check
 
-            let game = await pokerGame.games(gameId);
+            game = await pokerGame.games(gameId);
             expect(game.state).to.equal(5); // Showdown
 
             await pokerGame.connect(addr1).revealHand(gameId, handPrivateKey, ethers.randomBytes(32));
             await pokerGame.connect(addr2).revealHand(gameId, handPrivateKey, ethers.randomBytes(32));
             await pokerGame.connect(addr3).revealHand(gameId, handPrivateKey, ethers.randomBytes(32));
 
-            const finalBalance1 = await pokerGame.getChips(gameId, addr1.address);
-            const finalBalance2 = await pokerGame.getChips(gameId, addr2.address);
-            const finalBalance3 = await pokerGame.getChips(gameId, addr3.address);
+            player1 = await pokerGame.getPlayer(gameId, 1);
+            player2 = await pokerGame.getPlayer(gameId, 2);
+            player3 = await pokerGame.getPlayer(gameId, 3);
 
-            expect(finalBalance1).to.equal(initialBalance1);
-            expect(finalBalance2).to.equal(initialBalance2);
-            expect(finalBalance3).to.equal(initialBalance3);
+            expect(player1.chips).to.equal(initialBalance1);
+            expect(player2.chips).to.equal(initialBalance2);
+            expect(player3.chips).to.equal(initialBalance3);
         });
     });
 

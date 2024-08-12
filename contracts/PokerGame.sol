@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import 'hardhat/console.sol';
+//import 'hardhat/console.sol';
 
 /**
  * @title PokerGame
@@ -62,6 +62,7 @@ contract PokerGame {
         GameState state;
         uint hid;
         Pot[8] pots;
+        uint potTotal;
         uint currentBet;
         uint lastActionBlock;
         uint lastActionTimestamp;
@@ -311,6 +312,7 @@ contract PokerGame {
             Pot storage pot = game.pots[0];
             pot.amount += _amount;
             pot.contributed[_seat] += _amount;
+            game.potTotal += _amount;
             return;
         }
         uint remaining = _amount;
@@ -319,12 +321,14 @@ contract PokerGame {
             if (remaining + pot.contributed[_seat] <= pot.maxAmount) {
                 pot.amount += remaining;
                 pot.contributed[_seat] += remaining;
+                game.potTotal += remaining;
                 break;
             } else if (remaining > pot.maxAmount) {
                 uint contribution = pot.maxAmount - pot.contributed[_seat];
                 remaining -= contribution;
                 pot.amount += contribution;
                 pot.contributed[_seat] += contribution;
+                game.potTotal += contribution;
                 if (game.pots[i+1].maxAmount == 0) createPot(game);
             }
         }
@@ -554,50 +558,17 @@ contract PokerGame {
         return seat;
     }
 
-    function getHandId(uint _gid) public view returns (uint) {
-        return games[_gid].hid;
+    function getPlayer(uint _gid, uint8 _seat) public view returns (Player memory) {
+        return games[_gid].players[_seat];
     }
 
-    function getDealer(uint _gid) public view returns (address) {
-        return games[_gid].players[games[_gid].dealerSeat].addr;
-    }
-
-    function getAction(uint _gid) public view returns (address) {
-        return games[_gid].players[games[_gid].actionOnSeat].addr;
-    }
 /*
-    function getChips(uint _gid, address _player) public view returns (uint) {
-        uint8 seat = getSeat(_gid, _player);
-        return games[_gid].players[seat].chips;
-    }
-
-    function getNextActiveSeat(uint _gid, uint8 _startSeat) public view returns (uint8) {
-        return getNextActiveSeat(games[_gid], _startSeat);
-    }
-
-    function getActivePlayers(uint _gid) public view returns (uint8) {
-        return getActivePlayers(games[_gid]);
-    }
-
-    function isRoundComplete(uint _gid) public view returns (bool) {
-        return isRoundComplete(games[_gid]);
-    }
-
-
-    function getPotSize(uint _gid) external view returns (uint) {
-        Game storage game = games[_gid];
-        uint totalPot = 0;
-        for (uint i = 0; i < 8; i++) {
-            totalPot += game.pots[i].amount;
-        }
-        return totalPot;
-    }
-
     function getCommunityCards(uint _hid) public view returns (uint8[5] memory) {
         (uint8 flop1, uint8 flop2, uint8 flop3) = pokerDealer.getFlop(_hid);
         uint8 turn = pokerDealer.getTurn(_hid);
         uint8 river = pokerDealer.getRiver(_hid);
         return [flop1, flop2, flop3, turn, river];
     }
+
 */
 }
