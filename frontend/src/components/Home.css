@@ -26,11 +26,6 @@
     padding: 150px 20px;
     color: #fff; /* Ensure text remains readable */
 }
-.rotate-notice .logo {
-    font-family: "Playfair Display", 'Times New Roman', Times, serif;
-    font-size: 25px;
-    margin-top: -50px;
-}
 .hero .logo {
     font-family: "Playfair Display", 'Times New Roman', Times, serif;
     font-size: 100px;
@@ -186,32 +181,12 @@ footer a {
 }
 
 @media screen and (orientation: portrait) {
-    .rotate-notice {
-        display: block;
-        width: 100%;
-        height: 100vh;
-        background: #000;
-        color: #fff;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        position: absolute;
-        top: 0;
-        left: 0;
-        z-index: 9999;
-        text-align: center;
-    }
-
     .content {
         display: none;
     }
 }
 
 @media screen and (orientation: landscape) {
-    .rotate-notice {
-        display: none;
-    }
-
     .content {
         display: block;
     }

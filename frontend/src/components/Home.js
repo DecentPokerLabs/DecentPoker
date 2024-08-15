@@ -1,34 +1,36 @@
 import React, { useEffect } from 'react';
 import './Home.css';
-import { ReactComponent as PokerIcon } from '../img/icons/poker.svg';
-import { ReactComponent as CubeIcon } from '../img/icons/cube.svg';
-import { ReactComponent as RakeIcon } from '../img/icons/coins.svg';
+import { Boxes, HandCoins, UsersRound, Club, FileCode } from 'lucide-react';
 
 const Home = () => {
+  // Define the event handler functions
+  const handlePlayNowClick = () => {
+    window.location.href = '/#/lobby';
+  };
+
+  const handleReadDocsClick = () => {
+    window.location.href = '/DecentPoker-Whitepaper.pdf';
+  };
+
   useEffect(() => {
     // Attach event listeners
-    document.querySelectorAll('.play-now').forEach(element => {
-      element.addEventListener('click', () => {
-        alert('Coming Soon!');
-      });
+    const playNowButtons = document.querySelectorAll('.play-now');
+    const readDocsButtons = document.querySelectorAll('.read-docs');
+
+    playNowButtons.forEach(element => {
+      element.addEventListener('click', handlePlayNowClick);
     });
-    document.querySelectorAll('.read-docs').forEach(element => {
-      element.addEventListener('click', () => {
-        window.location.href = 'https://decentpoker.org/DecentPoker-Whitepaper.pdf';
-      });
+    readDocsButtons.forEach(element => {
+      element.addEventListener('click', handleReadDocsClick);
     });
 
     // Cleanup event listeners on component unmount
     return () => {
-      document.querySelectorAll('.play-now').forEach(element => {
-        element.removeEventListener('click', () => {
-          alert('Coming Soon!');
-        });
+      playNowButtons.forEach(element => {
+        element.removeEventListener('click', handlePlayNowClick);
       });
-      document.querySelectorAll('.read-docs').forEach(element => {
-        element.removeEventListener('click', () => {
-          window.location.href = 'https://decentpoker.org/DecentPoker-Whitepaper.pdf';
-        });
+      readDocsButtons.forEach(element => {
+        element.removeEventListener('click', handleReadDocsClick);
       });
     };
   }, []);
@@ -36,12 +38,6 @@ const Home = () => {
 
   return (
     <div className="content">
-        <div className="rotate-notice">
-            <div>
-                <div className="logo">Decent<span className="grey">Poker</span></div>
-                <p>Please rotate your device to landscape mode</p>
-            </div>
-        </div>
         <div className="menu">
             <a href="javscript:void(0)" className="play-now">PLAY</a> <span className="grey">|</span>
             <a href="https://decentpoker.substack.com">NEWS</a> <span className="grey">|</span>
@@ -66,7 +62,7 @@ const Home = () => {
             <p>You play against other players who connect to the peer to peer network like you</p>
             <div className="grid">
                 <div className="grid-item">
-                    <PokerIcon className="svg-icon" alt="Permissionless Poker" />
+                    <Boxes className="svg-icon" color="#22B879" size={100} alt="Permissionless Poker" />
                     <div className="grid-text">
                         <h3>Permissionless Poker</h3>
                         <p>First fully decentralized poker game with no third party dealer</p>
@@ -79,11 +75,11 @@ const Home = () => {
                         <p>Built by poker players for poker players and shared with the community</p>
                         <p>The full code base is open source for transparency. Don't trust, verify you are playing a fair game</p>
                     </div>
-                    <CubeIcon className="svg-icon" alt="Community Built" />
+                    <UsersRound className="svg-icon" color="#22B879" size={100} alt="Community Built" />
                     
                 </div>
                 <div className="grid-item">
-                    <RakeIcon className="svg-icon" alt="Rake Free" />
+                    <HandCoins className="svg-icon" color="#22B879" size={100} alt="Rake Free" />
                     <div className="grid-text">
                         <h3>Rake Free</h3>
                         <p>Rake free gameplay allowing players to keep 100% of their winnings</p>
@@ -91,7 +87,7 @@ const Home = () => {
                     </div>
                 </div>
             </div>
-            <button className="read-docs">DOCUMENTATION</button> <button className="play-now">PLAY NOW</button>
+            <button className="read-docs"><FileCode color="#FFFFFF" size={12} />&nbsp; DOCUMENTATION</button> <button className="play-now"><Club color="#FFFFFF" size={12} />&nbsp; PLAY NOW</button>
         </section>
 
         <section id="game-features" className="container">
@@ -99,7 +95,7 @@ const Home = () => {
             <div className="features">
                 <div className="feature">
                     <h3>Get Some Crypto</h3>
-                    <p>Get some USDC on <a href="https://coinbase.com" target="_blank">Coinbase</a> and fund your account. Withdraw funds at any time. Maintain complete control over your digital wallet.</p>
+                    <p>Get some USDC on <a href="https://coinbase.com" target="_blank" rel="noreferrer">Coinbase</a> and fund your account. Withdraw funds at any time. Maintain complete control over your digital wallet.</p>
                 </div>
                 <div className="feature">
                     <h3>Join Your Game</h3>
@@ -113,12 +109,12 @@ const Home = () => {
             <p>The worlds first fully decentralized peer to peer poker community.</p>
             <div className="testimonials grid">
                 <div className="testimonial grid-item">
-                    <img src="img/testimonial1.webp" alt="Testimonial" />
+                    <img src="/img/testimonial1.webp" alt="Testimonial" />
                     <p>"DecentPoker has completely revolutionized how we think about poker. The house always wins, except when there is no house. It's the only choice for any serious player"</p>
                 </div>
                 <div className="testimonial grid-item">
                     <p>"Joining the community has been fantastic, providing both security and a social, engaging environment. I highly recommend it to anyone looking for an exciting poker experience"</p>
-                    <img src="img/testimonial2.webp" alt="Testimonial" />
+                    <img src="/img/testimonial2.webp" alt="Testimonial" />
                 </div>
             </div>
             <button className="play-now">JOIN IN TODAY</button>
@@ -137,7 +133,7 @@ const Home = () => {
         
             <div className="security-item">
                 <h4>Transparent and Verifiable Smart Contracts</h4>
-                <p>All game logic and transactions are handled by smart contracts, which are transparent and open-source. These contracts have been rigorously tested through extensive unit and integration tests to ensure their reliability and security. You can review our smart contracts and unit tests on our <a href="https://github.com/DecentPokerLabs/DecentPoker/" target="_blank">GitHub repository</a>. By making our code open-source, we invite the community to verify and audit our contracts, fostering trust and transparency.</p>
+                <p>All game logic and transactions are handled by smart contracts, which are transparent and open-source. These contracts have been rigorously tested through extensive unit and integration tests to ensure their reliability and security. You can review our smart contracts and unit tests on our <a href="https://github.com/DecentPokerLabs/DecentPoker/" target="_blank" rel="noreferrer">GitHub repository</a>. By making our code open-source, we invite the community to verify and audit our contracts, fostering trust and transparency.</p>
             </div>
         
             <div className="security-item">
@@ -154,9 +150,9 @@ const Home = () => {
         <section id="blog-news" className="container">
             <h2>Newsletter</h2>
             <p>Stay updated with the latest features, events, and company news.</p>
-            <iframe src="https://decentpoker.substack.com/embed" width="480" height="320" id="substack-iframe"></iframe>              
+            <iframe src="https://decentpoker.substack.com/embed" width="480" height="320" id="substack-iframe" title="DecentPoker Substack"></iframe>              
             <p>Read educational content about poker strategies, blockchain technology, and decentralized gaming.</p>
-            <a href="https://decentpoker.substack.com" target="_blank">https://decentpoker.substack.com</a>
+            <a href="https://decentpoker.substack.com" target="_blank" rel="noreferrer">https://decentpoker.substack.com</a>
         </section>
 
         <footer className="container">
@@ -173,16 +169,6 @@ const Home = () => {
         </footer>
     </div>
   );
-  document.querySelectorAll('.play-now').forEach(element => {
-      element.addEventListener('click', () => {
-          alert('Coming Soon!');
-      });
-  });
-  document.querySelectorAll('.read-docs').forEach(element => {
-      element.addEventListener('click', () => {
-          window.location.href = 'https://decentpoker.org/DecentPoker-Whitepaper.pdf';
-      });
-  });
 }
 
 export default Home;

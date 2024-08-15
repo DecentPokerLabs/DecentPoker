@@ -1,3 +1,7 @@
+/*! MIT License. Copyright 2015-2022 Richard Moore <me@ricmoo.com>. See LICENSE.txt. */
+
+/*! noble-curves - MIT License (c) 2022 Paul Miller (paulmillr.com) */
+
 /**
  * @license React
  * react-dom.production.min.js
@@ -36,6 +40,13 @@
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
+ */
+
+/**
+ * @license lucide-react v0.427.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
  */
 
 /**
