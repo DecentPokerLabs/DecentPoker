@@ -117,6 +117,7 @@ const Lobby = () => {
 
   const loadGame = async () => {
     alert('coming soon');
+    window.location = '/#/table';
   }
 
   useEffect(() => {

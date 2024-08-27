@@ -2,6 +2,7 @@ import React from 'react';
 import { HashRouter, Routes, Route } from 'react-router-dom';
 import Home from './components/Home';
 import Lobby from './components/Lobby';
+import Table from './components/Table';
 import './App.css';
 
 function App() {
@@ -11,6 +12,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/lobby" element={<Lobby />} />
+          <Route path="/table" element={<Table />} />
         </Routes>
       </div>
     </HashRouter>

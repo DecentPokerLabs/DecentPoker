@@ -87,6 +87,9 @@ a:hover {
 .spacer {
   margin: 2%;
 }
+.hidden {
+  display: none;
+}
 .flex-column {
   display: flex;
   flex-direction: column;

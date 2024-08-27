@@ -1,0 +1,20 @@
+<svg width="1920" height="1080" version="1.1" viewBox="0 0 508 285.75" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+ <defs>
+  <radialGradient id="radialGradient4539" cx="254" cy="154.12" r="254" gradientTransform="matrix(.9122 -.0058747 .0033063 .51338 21.792 76.492)" gradientUnits="userSpaceOnUse">
+   <stop stop-color="#a8a8a8" offset="0"/>
+   <stop stop-opacity=".975" offset="1"/>
+  </radialGradient>
+  <radialGradient id="radialGradient1013" cx="254" cy="133.16" r="178.54" gradientTransform="matrix(-.94659 .28792 -.17572 -.5777 517.83 136.96)" gradientUnits="userSpaceOnUse">
+   <stop stop-color="#5c5c5c" offset="0"/>
+   <stop stop-color="#fff" stop-opacity="0" offset="1"/>
+  </radialGradient>
+ </defs>
+ <g transform="translate(0 -11.25)" fill-rule="evenodd">
+  <rect y="11.25" width="508" height="285.75" fill="url(#radialGradient4539)" style="paint-order:markers stroke fill"/>
+  <ellipse cx="254" cy="130.52" rx="189.23" ry="96.596" fill="#4d4d4d" style="paint-order:markers stroke fill"/>
+  <ellipse cx="254" cy="136.87" rx="189.23" ry="96.596" fill="#333" style="paint-order:markers stroke fill"/>
+  <ellipse cx="254" cy="129.99" rx="180.02" ry="91.895" style="paint-order:markers stroke fill"/>
+  <ellipse cx="254" cy="133.16" rx="178.54" ry="91.139" fill="url(#radialGradient1013)" style="paint-order:markers stroke fill"/>
+  <path d="m442.97 136.32a189.23 96.596 0 0 1-188.97 93.965 189.23 96.596 0 0 1-188.97-92.878 189.23 96.596 0 0 0-0.25787 2.6314 189.23 96.596 0 0 0 189.23 96.596 189.23 96.596 0 0 0 189.23-96.596 189.23 96.596 0 0 0-0.25787-3.7192z" fill="#1a1a1a" style="paint-order:markers stroke fill"/>
+ </g>
+</svg>
