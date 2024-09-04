@@ -23,13 +23,9 @@ module.exports = {
       url: 'https://eth-sepolia.g.alchemy.com/v2/'+process.env.ALCHEMY_API_KEY,
       accounts: [process.env.PRIVATE_KEY],
     },
-    basesepolia: {
+    baseSepolia: {
       url: 'https://sepolia.base.org',
       accounts: [process.env.PRIVATE_KEY],
-    },
-    arbitrumsepolia: {
-      url: 'https://sepolia-rollup.arbitrum.io/rpc',
-      accounts: [process.env.USER1_PRIVATE_KEY,process.env.USER2_PRIVATE_KEY],
     },
     mainnet: {
       url: 'https://eth-mainnet.alchemyapi.io/v2/'+process.env.ALCHEMY_API_KEY,
@@ -37,7 +33,21 @@ module.exports = {
     },
   },
   etherscan: {
-    apiKey: process.env.ETHERSCAN_API_KEY,
+    apiKey: {
+      "mainnet": process.env.ETHERSCAN_API_KEY,
+      "sepolia": process.env.ETHERSCAN_API_KEY,
+      "baseSepolia": process.env.BASESCAN_API_KEY,
+    },
+    customChains: [
+      {
+        network: 'baseSepolia',
+        chainId: 84532,
+        urls: {
+          apiURL: 'https://api-sepolia.basescan.org/api',
+          browserURL: 'https://sepolia.basescan.org/'
+        }
+      }
+    ],
   },
   sourcify: {
     enabled: true

@@ -24,6 +24,7 @@ interface IPokerGame {
     function createGame(uint8 _maxPlayers, uint _bigBlind) external returns (uint);
     function joinGame(uint _gid, address _player, uint8 _seat, bytes32 _handPublicKey) external;
     function updateBlinds(uint _gid, uint _bigBlind) external;
+    function gameCount() external view returns (uint);
 }
 
 contract PokerLobby {
@@ -33,6 +34,7 @@ contract PokerLobby {
     struct CashGame {
         uint gid;
         uint8 maxPlayers;
+        uint activePlayers;
         uint bigBlind;
         bytes32 invitePublicKey;
         uint startTimestamp;
@@ -42,6 +44,7 @@ contract PokerLobby {
     struct SitAndGo {
         uint gid;
         uint8 maxPlayers;
+        uint activePlayers;
         uint bigBlind;
         uint blindDuration;
         uint lastBlindUpdate;
@@ -118,6 +121,7 @@ contract PokerLobby {
 
     function joinCashGame(uint _gid, uint8 _seat, bytes32 _handPublicKey, bytes32 _invitePrivateKey) external {
         CashGame storage game = cashGames[_gid];
+        game.activePlayers += 1;
         require(game.bigBlind > 0, "Game not found");
         require(keccak256(abi.encodePacked(_invitePrivateKey)) == game.invitePublicKey || game.invitePublicKey == 0x0, "invitePrivateKey invalid");
         uint buyIn = game.bigBlind * 100;
@@ -128,6 +132,7 @@ contract PokerLobby {
 
     function registerSitAndGo(uint _gid, uint8 _seat, bytes32 _handPublicKey, bytes32 _invitePrivateKey) external {
         SitAndGo storage game = sitAndGos[_gid];
+        game.activePlayers += 1;
         require(game.bigBlind > 0, "Game not found");
         require(game.players[_seat] == address(0), "Seat taken forrest");
         require(keccak256(abi.encodePacked(_invitePrivateKey)) == game.invitePublicKey || game.invitePublicKey == 0x0, "invitePrivateKey invalid");
@@ -192,6 +197,7 @@ contract PokerLobby {
         require(msg.sender == address(pokerGame), "only pokerGame can endGame");
         if (cashGames[_gid].bigBlind > 0) {
             IERC20(cashGames[_gid].token).transfer(_player, _chips);
+            cashGames[_gid].activePlayers -= 1;
             emit GameEnded(_gid, _player, _chips);
         } else if (sitAndGos[_gid].bigBlind > 0) {
             SitAndGo storage game = sitAndGos[_gid];
@@ -218,7 +224,39 @@ contract PokerLobby {
                     IERC20(game.token).transfer(game.position[game.maxPlayers - 1], prizePool);
                 }
             }
+            sitAndGos[_gid].activePlayers -= 1;
             emit GameEnded(_gid, _player, _chips);
         }
     }
+
+    function latestCashGames(uint _maxGames) external view returns(CashGame[] memory) {
+        uint gameCount = pokerGame.gameCount();
+        uint found = 0;
+        CashGame[] memory latest = new CashGame[](_maxGames);
+        while (found < _maxGames && gameCount > 0) {
+            if (cashGames[gameCount].activePlayers > 0 && cashGames[gameCount].invitePublicKey == 0x0) {
+                latest[found] = cashGames[gameCount];
+                found++;
+            }
+            if (gameCount == 0) break;
+            gameCount--;
+        }
+        return latest;
+    }
+
+    function latestSitAndGoGames(uint _maxGames) external view returns(SitAndGo[] memory) {
+        uint gameCount = pokerGame.gameCount();
+        uint found = 0;
+        SitAndGo[] memory latest = new SitAndGo[](_maxGames);
+        while (found < _maxGames && gameCount > 0) {
+            if (sitAndGos[gameCount].activePlayers > 0 && cashGames[gameCount].invitePublicKey == 0x0) {
+                latest[found] = sitAndGos[gameCount];
+                found++;
+            }
+            if (gameCount == 0) break;
+            gameCount--;
+        }
+        return latest;
+    }
+
 }

@@ -79,7 +79,7 @@ contract PokerGame {
     IPokerLobby public pokerLobby;
 
     mapping(uint => Game) public games;
-    uint gameCount;
+    uint public gameCount;
 
     event GameCreated(uint indexed gid, uint8 maxPlayers, uint bigBlind);
     event PlayerJoined(uint indexed gid, address player, uint8 seatIndex);

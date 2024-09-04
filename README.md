@@ -59,24 +59,16 @@ A decentralized poker game is a technically challenging project due to the compu
   - Utilize account abstraction and latest web3 UX practices
   - Create a seamless onboarding process
 
-### Testnet
+### Testnet Contract Addresses
 
-Deployed to Ethereum Sepolia testnet & Base Sepolia testnet:
-
-#### Ethereum Sepolia Testnet
-PokerChips deployed to: 0xF15Dc43dCf1e0f93c7873B0DB79CC9Bec771a950
-PokerHandEvaluator deployed to: 0x0b9c45A9f3183d162AAf262Ce84B39C9cb819723
-PokerDealer deployed to: 0x7608ac91726305c9d08Bec80572AcA5937c02Bf8
-PokerLobby deployed to: 0x9aBe6628710CA195b959e128d9e3712DB7dC953a
-PokerGame deployed to: 0xbEab32fC4df8C9Cf0C45F29b31212855C4809e9D
+Deployed to Base Sepolia testnet:
 
 #### Base Sepolia Testnet
-PokerChips deployed to: 0x484Ec30Feff505b545Ed7b905bc25a6a40589181
-PokerHandEvaluator deployed to: 0x0246B582B64C34a5a7a28c3B7b1637cF5D4598a7
-PokerDealer deployed to: 0x06206d5F1929a7BC489851f697AAF12e6E140b81
-PokerLobby deployed to: 0x094251c982cb00B1b1E1707D61553E304289D4D8
-PokerGame deployed to: 0x365Cb0886c53695e2578295CE69B72e20Dd50A54
-
+PokerChips deployed to: 0xac4bd460cBEEE65dBF2A82b658a5427Aa4Aad8aB
+PokerHandEvaluator deployed to: 0xce133F2211e2e25e1Fa07FBaF6a1Cd0825E532B7
+PokerDealer deployed to: 0xb47C718ed981EFaB31EEa6d88ABd0A7f3DE89B7C
+PokerLobby deployed to: 0x86cA4261e5990eBCd700109450EBf04c678b39e8
+PokerGame deployed to: 0x5d3F636136A2ae5f8ACac1A3983D2022683F4905
 
 ## Getting Started
 

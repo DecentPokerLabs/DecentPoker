@@ -5,6 +5,15 @@ const Table = () => {
 
   return (
   <div id="table">
+    <div className="rotate-notice">
+      <div>
+        <div className="logo">Decent<span className="grey">Poker</span></div>
+        <p>Please rotate your device to landscape mode</p>
+      </div>
+    </div>
+    <div className="header pointer" onClick={() => window.location = '/'}>
+      <div className="logo">Decent<span className="grey">Poker</span></div>
+    </div>
     <div id="table-title">Decent<span className="table-title-alt">Poker</span></div>
     <div id="group-cards"></div>
     <div id="players"></div>

@@ -1,11 +1,11 @@
 {
   "dependencies": {
+    "hardhat": "^2.22.6",
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
     "@nomicfoundation/hardhat-verify": "^2.0.9",
     "@openzeppelin/contracts": "^5.0.2",
     "cross-env": "^7.0.3",
     "dotenv": "^16.4.5",
-    "hardhat": "^2.22.6",
     "http-server": "^14.1.1",
     "poker-evaluator": "^2.1.0"
   }

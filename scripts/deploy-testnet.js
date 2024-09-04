@@ -5,7 +5,7 @@ async function main() {
 
     const network = await ethers.provider.getNetwork();
     if (network.chainId !== 11155111n && network.chainId !== 84532n) {
-      console.error("This script should only be run on the Sepolia network!", network.chainId);
+      console.error("This script should only be run on Sepolia test networks!", network.chainId);
       process.exit(1);
     }
 
